@@ -43,9 +43,14 @@ class AutoExerciseGenerationAgent:
     async def auto_generate_programming_exercise(self, topic: str, difficulty: str) -> Dict[str, Any]:
         """自动生成编程题目"""
         system_prompt = """你是一个编程教育专家，擅长设计适合不同难度级别的编程练习题。
-请生成具有教育意义、难度适中的编程题目。"""
+你需要根据主代理发来的的提示词生成一个合适的编程题目，题目要求如下
+1.优先检索我提供的题库搜索满足用户需求的题目
+2.如果题库没有合适的题目，自动生成适合用户的编程练习题
+3.生成的题目符合当前用户的认知水平
+
+"""
         
-        user_message = f"请生成一个关于{topic}的编程题目，难度级别为{difficulty}。要求：\n1. 题目描述清晰\n2. 提供示例输入输出\n3. 说明期望的解决方案思路"
+        user_message = f"请生成一个关于{topic}的编程题目，难度级别为{difficulty}。要求：\n1. 题目描述清晰\n2. 提供示例输入输出"
         
         generated_content = await llm_client.generate_response(system_prompt, user_message)
         
