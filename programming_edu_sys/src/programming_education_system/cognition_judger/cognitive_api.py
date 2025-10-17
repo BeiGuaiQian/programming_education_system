@@ -1,4 +1,4 @@
-# programming_education_system/cognition_api.py
+# programming_education_system/cognitive_api.py
 """
 认知评估API服务 - 为智能体提供认知数据访问接口
 """
