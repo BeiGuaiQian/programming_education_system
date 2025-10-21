@@ -1,24 +1,26 @@
-# programming_education_system/main.py
+# src/programming_education_system/main_final.py
 """
-编程教育智能体系统主入口 - 修复导入版本
+编程教育智能体系统最终版主程序
+集成LLM-UM框架，保持所有原有功能
 """
 import asyncio
 import logging
 import sys
 import os
+from typing import Dict, Any
 
 # 添加项目根目录到Python路径
-from typing import Dict,Any,List
-from agents.user_agent import UserAgent
-from agents.main_agent import MainAgent
-from agents.qa_agent import QAAgent
-from agents.exercise_agent import ExerciseGenerationAgent
-from agents.evaluation_agent import AnswerEvaluationAgent
-from agents.personal_agent import PersonalizedLearningAgent
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# 新增认知评估导入
-from programming_education_system.cognition_judger.cognitive_api import get_cognition_api
+from programming_education_system.agents.user_agent import UserAgent
+from programming_education_system.agents.main_agent import MainAgent
+from programming_education_system.agents.qa_agent import QAAgent
+from programming_education_system.agents.exercise_agent import ExerciseGenerationAgent
+from programming_education_system.agents.evaluation_agent import AnswerEvaluationAgent
+from programming_education_system.agents.personal_agent import PersonalizedLearningAgent
 
+# 使用LLM-UM框架的认知评估API
+from programming_education_system.cognition_judger.cognitive_api_llm_um import get_cognition_api
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -27,11 +29,11 @@ logging.basicConfig(
 
 
 class ProgrammingEducationSystem:
-    """编程教育智能体系统主类"""
+    """编程教育智能体系统主类 - 最终版"""
 
     def __init__(self):
-        self.logger = logging.getLogger("System")
-        # 初始化认知评估API
+        self.logger = logging.getLogger("System-Final")
+        # 初始化LLM-UM认知评估API
         self.cognition_api = get_cognition_api()
         self.initialize_agents()
 
@@ -56,7 +58,7 @@ class ProgrammingEducationSystem:
 
     async def process_user_request(self, request_type: str, content: str, user_id: str = "user_001"):
         """
-        处理用户请求 - 保留原有功能，集成认知评估
+        处理用户请求 - 集成LLM-UM框架
         """
         self.logger.info(f"处理用户请求 - 类型: {request_type}, 用户: {user_id}")
 
@@ -71,10 +73,10 @@ class ProgrammingEducationSystem:
             # 计算处理时间（用于认知评估）
             processing_time = asyncio.get_event_loop().time() - start_time
 
-            # 记录认知评估数据（新增功能）
+            # 记录认知评估数据（使用LLM-UM框架）
             await self._record_cognitive_data(user_id, request_type, final_result, processing_time, content)
 
-            # 集成认知信息到结果（新增功能）
+            # 集成认知信息到结果（使用LLM-UM框架）
             final_result = await self._enhance_with_cognition(user_id, final_result, request_type)
 
             return final_result
@@ -94,7 +96,7 @@ class ProgrammingEducationSystem:
                                      result: Dict[str, Any],
                                      processing_time: float,
                                      original_content: str):
-        """记录认知评估数据 - 新增功能"""
+        """记录认知评估数据 - 使用LLM-UM框架"""
         try:
             interaction_data = {
                 "processing_time": processing_time,
@@ -112,23 +114,23 @@ class ProgrammingEducationSystem:
                 user_id, request_type, interaction_data
             )
 
-            self.logger.info(f"认知数据记录完成 - 用户: {user_id}")
+            self.logger.info(f"LLM-UM认知数据记录完成 - 用户: {user_id}")
 
         except Exception as e:
             self.logger.warning(f"记录认知数据失败: {e}")
 
     async def _enhance_with_cognition(self, user_id: str, result: Dict[str, Any], request_type: str) -> Dict[str, Any]:
-        """用认知数据增强结果 - 新增功能"""
+        """用认知数据增强结果 - 使用LLM-UM框架"""
         try:
-            # 获取认知档案
+            # 获取认知档案（来自LLM-UM框架）
             cognitive_profile = await self.cognition_api.get_cognitive_level(user_id)
 
-            # 获取个性化推荐
+            # 获取个性化推荐（来自LLM-UM框架）
             recommendations = await self.cognition_api.get_personalization_recommendations(
                 user_id, request_type
             )
 
-            # 获取自适应参数
+            # 获取自适应参数（来自LLM-UM框架）
             adaptive_params = await self.cognition_api.get_adaptive_content_parameters(user_id)
 
             # 集成到结果中，不影响原有结构
@@ -142,7 +144,7 @@ class ProgrammingEducationSystem:
             })
 
             self.logger.info(
-                f"认知增强完成 - 用户: {user_id}, 认知水平: {cognitive_profile.get('overall_level', 0.5):.3f}")
+                f"LLM-UM认知增强完成 - 用户: {user_id}, 认知水平: {cognitive_profile.get('overall_level', 0.5):.3f}")
 
             return result
 
@@ -151,7 +153,7 @@ class ProgrammingEducationSystem:
             return result
 
     def _estimate_complexity(self, result: Dict[str, Any], original_content: str) -> float:
-        """估计交互复杂度 - 新增功能"""
+        """估计交互复杂度"""
         complexity = 0.5
 
         # 基于响应长度
@@ -177,7 +179,7 @@ class ProgrammingEducationSystem:
         return max(0.1, min(1.0, complexity))
 
     def _extract_knowledge_domain(self, result: Dict[str, Any], original_content: str) -> str:
-        """提取知识领域 - 新增功能"""
+        """提取知识领域"""
         # 首先尝试从结果中提取
         details = result.get("details", {})
         if "topic" in details:
@@ -213,7 +215,7 @@ class ProgrammingEducationSystem:
             return "syntax"
 
     def _map_to_cognitive_level(self, request_type: str) -> str:
-        """映射到认知水平 - 新增功能"""
+        """映射到认知水平"""
         mapping = {
             "qa": "understand",
             "exercise": "apply",
@@ -222,6 +224,16 @@ class ProgrammingEducationSystem:
             "auto": "understand"  # 默认类型
         }
         return mapping.get(request_type, "remember")
+
+    async def get_system_status(self) -> Dict[str, Any]:
+        """获取系统状态"""
+        return {
+            "system": "运行中",
+            "llm_um_framework": "已集成",
+            "agents_initialized": True,
+            "cognitive_api": "LLM-UM",
+            "timestamp": asyncio.get_event_loop().time()
+        }
 
 
 # 全局系统实例
@@ -237,11 +249,11 @@ def get_system():
 
 
 async def demo():
-    """演示系统功能 - 保持原有功能不变"""
+    """演示系统功能 - 集成LLM-UM框架"""
     system = get_system()
 
     print("=" * 60)
-    print("编程教育智能体系统演示")
+    print("编程教育智能体系统 - 最终版演示 (LLM-UM集成)")
     print("=" * 60)
 
     # 演示1: 答疑功能
@@ -253,11 +265,11 @@ async def demo():
     )
     print(f"答疑结果: {result1['response']}")
 
-    # 显示认知信息（新增）
+    # 显示认知信息（来自LLM-UM）
     if "cognitive_insights" in result1:
         insights = result1["cognitive_insights"]
         profile = insights.get("user_profile", {})
-        print(f"认知水平: {profile.get('overall_level', 0.5):.2f}")
+        print(f"LLM-UM认知水平: {profile.get('overall_level', 0.5):.2f}")
 
     # 演示2: 练习生成
     print("\n2. 演示练习生成:")
@@ -268,11 +280,11 @@ async def demo():
     )
     print(f"练习生成结果: {result2['response']}")
 
-    # 显示认知信息（新增）
+    # 显示认知信息（来自LLM-UM）
     if "cognitive_insights" in result2:
         insights = result2["cognitive_insights"]
         recommendations = insights.get("recommendations", {})
-        print(f"推荐难度: {recommendations.get('difficulty_level', 'unknown')}")
+        print(f"LLM-UM推荐难度: {recommendations.get('difficulty_level', 'unknown')}")
 
     # 演示3: 个性化建议
     print("\n3. 演示个性化建议:")
@@ -283,11 +295,11 @@ async def demo():
     )
     print(f"个性化建议: {result3['response']}")
 
-    # 显示认知信息（新增）
+    # 显示认知信息（来自LLM-UM）
     if "cognitive_insights" in result3:
         insights = result3["cognitive_insights"]
         params = insights.get("personalization_parameters", {})
-        print(f"个性化参数 - 解释深度: {params.get('explanation_depth', 0.5):.2f}")
+        print(f"LLM-UM个性化参数 - 解释深度: {params.get('explanation_depth', 0.5):.2f}")
 
     print("\n" + "=" * 60)
     print("演示完成!")

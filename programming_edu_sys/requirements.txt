@@ -3,3 +3,7 @@ openai
 pydantic
 python-dotenv
 asyncio
+pandas
+numpy
+matplotlib
+seaborn

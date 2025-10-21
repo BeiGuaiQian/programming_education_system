@@ -10,12 +10,12 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="programming-education-system",
     version="1.0.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Ken Lu",
+    author_email="2577911774@qq.com",
     description="A multi-agent programming education system",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/programming-education-system",
+    url="https://github.com/BeiGuaiQian/programming_education_system",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     classifiers=[

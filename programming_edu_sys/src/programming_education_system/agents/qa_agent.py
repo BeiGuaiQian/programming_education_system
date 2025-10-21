@@ -12,7 +12,7 @@ from programming_education_system.models.knowledge_base import KnowledgeBase
 from programming_education_system.agents.base_agent import BaseAgent
 
 # 导入认知评估
-from programming_education_system.cognition_judger.cognitive_api import get_cognition_api
+from programming_education_system.cognition_judger.cognitive_api_llm_um import get_cognition_api
 
 logger = logging.getLogger(__name__)
 
