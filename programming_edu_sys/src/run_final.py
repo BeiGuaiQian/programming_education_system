@@ -27,7 +27,6 @@ def main():
         print("  │   └── programming_education_system/")
         print("  │       ├── main_final.py")
         print("  │       ├── interactive_cli_final.py") 
-        print("  │       ├── llm_um_framework.py")
         print("  │       └── cognition_judger/")
         print("  │           └── cognitive_api_llm_um.py")
         print("  └── run_final.py")

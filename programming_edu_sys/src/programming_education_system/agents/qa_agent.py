@@ -1,39 +1,36 @@
-# src/programming_education_system/agents/qa_agent.py (集成认知评估版本)
+# src/programming_education_system/agents/qa_agent.py
 """
-答疑代理 - 集成认知评估增强版
+答疑代理 - 完全使用科学认知API版本
 """
 from typing import Dict, Any, List
 import logging
 import asyncio
 
-# 使用相对导入
 from programming_education_system.utils.llm_utils import llm_client
 from programming_education_system.models.knowledge_base import KnowledgeBase
 from programming_education_system.agents.base_agent import BaseAgent
 
-# 导入认知评估
-from programming_education_system.cognition_judger.cognitive_api_llm_um import get_cognition_api
+# 导入科学认知API
+from programming_education_system.cognition_judger.cognitive_api_scientific import get_scientific_cognitive_api, get_scientific_cognitive_api_sync
 
 logger = logging.getLogger(__name__)
 
-
 class ThinkingQAAgent:
-    """思考答疑子代理 - 集成认知评估"""
+    """思考答疑子代理 - 科学认知API版本"""
 
     def __init__(self):
         self.name = "ThinkingQAAgent"
-        self.cognition_api = get_cognition_api()
+        self.cognition_api = get_scientific_cognitive_api_sync()
 
-    async def think_and_answer(self, complex_question: str, user_id: str, context: Dict[str, Any] = None) -> Dict[
-        str, Any]:
-        """处理复杂问题分析 - 基于认知水平个性化"""
+    async def think_and_answer(self, complex_question: str, user_id: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """处理复杂问题分析 - 基于科学认知水平个性化"""
 
-        # 获取用户认知水平和个性化参数
-        cognitive_profile = await self.cognition_api.get_cognitive_level(user_id)
-        personalization_params = await self.cognition_api.get_adaptive_content_parameters(user_id)
+        # 获取用户认知状态和个性化参数
+        cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
+        learning_params = await self.cognition_api.get_personalized_learning_parameters(user_id, "explanation")
 
-        # 基于认知水平调整系统提示
-        system_prompt = self._build_system_prompt(cognitive_profile, personalization_params)
+        # 基于认知状态调整系统提示
+        system_prompt = self._build_system_prompt(cognitive_state, learning_params)
 
         user_message = f"学习者提问：{complex_question}"
 
@@ -47,16 +44,18 @@ class ThinkingQAAgent:
 
         return {
             "answer": answer,
-            "cognitive_level_used": cognitive_profile["overall_level"],
-            "explanation_depth": personalization_params["explanation_depth"],
+            "cognitive_level_used": cognitive_state["overall_cognitive_level"],
+            "learning_parameters": learning_params,
             "personalization_applied": True
         }
 
-    def _build_system_prompt(self, cognitive_profile: Dict[str, Any], personalization: Dict[str, Any]) -> str:
-        """基于认知水平构建系统提示"""
+    def _build_system_prompt(self, cognitive_state: Dict[str, Any], learning_params: Dict[str, Any]) -> str:
+        """基于认知状态构建系统提示"""
 
-        cognitive_level = cognitive_profile["overall_level"]
-        explanation_depth = personalization["explanation_depth"]
+        cognitive_level = cognitive_state["overall_cognitive_level"]
+        parameters = learning_params.get("parameters", {})
+        explanation_depth = parameters.get("explanation_depth", 0.7)
+        learning_chars = cognitive_state.get("learning_characteristics", {})
 
         base_prompt = "你是一个耐心、专业的编程教育专家，擅长根据学习者的认知水平调整解释方式。"
 
@@ -70,6 +69,7 @@ class ThinkingQAAgent:
 4. 鼓励学习者，给予正面反馈
 5. 解释深度：{explanation_depth:.1f}（较浅显易懂）
 
+学习特征：{learning_chars.get('learning_style', 'balanced')}
 请确保回答友好、支持性，帮助建立学习信心。"""
 
         elif cognitive_level < 0.7:
@@ -82,6 +82,7 @@ class ThinkingQAAgent:
 4. 解释相关的编程原理
 5. 解释深度：{explanation_depth:.1f}（适中详细）
 
+学习特征：{learning_chars.get('learning_style', 'balanced')}
 请确保回答既有深度又实用。"""
 
         else:
@@ -94,15 +95,16 @@ class ThinkingQAAgent:
 4. 提供高级应用场景
 5. 解释深度：{explanation_depth:.1f}（深入详细）
 
+学习特征：{learning_chars.get('learning_style', 'balanced')}
 请确保回答专业、深入，满足高级学习者的需求。"""
 
 
 class KnowledgeBaseRetrievalAgent:
-    """知识库检索子代理 - 集成认知评估"""
+    """知识库检索子代理 - 科学认知API版本"""
 
     def __init__(self):
         self.knowledge_base = KnowledgeBase()
-        self.cognition_api = get_cognition_api()
+        self.cognition_api = get_scientific_cognitive_api_sync()
         self._enhance_knowledge_base()
 
     def _enhance_knowledge_base(self):
@@ -138,20 +140,19 @@ class KnowledgeBaseRetrievalAgent:
             for item in items:
                 self.knowledge_base.add_knowledge(
                     topic, item["question"], item["answer"], item.get("examples", []),
-
                 )
 
     async def retrieve_from_knowledge_base(self, question: str, user_id: str) -> Dict[str, Any]:
-        """从知识库检索答案 - 基于认知水平个性化"""
+        """从知识库检索答案 - 基于科学认知状态个性化"""
         results = self.knowledge_base.search(question)
 
         if results:
             best_match = results[0]
 
-            # 获取用户认知水平以个性化回答
-            cognitive_level = await self.cognition_api.get_cognitive_level(user_id)
+            # 获取用户认知状态以个性化回答
+            cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
             personalized_answer = await self._personalize_knowledge_answer(
-                best_match, cognitive_level
+                best_match, cognitive_state
             )
 
             return {
@@ -166,35 +167,45 @@ class KnowledgeBaseRetrievalAgent:
             return {"found": False, "answer": ""}
 
     async def _personalize_knowledge_answer(self, knowledge_item: Dict[str, Any],
-                                            cognitive_level: Dict[str, Any]) -> str:
-        """基于认知水平个性化知识库回答"""
+                                            cognitive_state: Dict[str, Any]) -> str:
+        """基于认知状态个性化知识库回答"""
         base_answer = knowledge_item["answer"]
         difficulty_levels = knowledge_item.get("metadata", {}).get("difficulty_levels", {})
 
-        level = cognitive_level["overall_level"]
+        level = cognitive_state["overall_cognitive_level"]
+        learning_trend = cognitive_state.get("learning_trend", "stable")
 
+        # 基于认知水平和学习趋势选择回答
         if level < 0.4 and "beginner" in difficulty_levels:
-            return f"{difficulty_levels['beginner']}\n\n{base_answer}"
+            personalized = difficulty_levels['beginner']
         elif level < 0.7 and "intermediate" in difficulty_levels:
-            return f"{difficulty_levels['intermediate']}\n\n{base_answer}"
+            personalized = difficulty_levels['intermediate']
         elif level >= 0.7 and "advanced" in difficulty_levels:
-            return f"{difficulty_levels['advanced']}\n\n{base_answer}"
+            personalized = difficulty_levels['advanced']
         else:
-            return base_answer
+            personalized = base_answer
+
+        # 基于学习趋势添加额外指导
+        if learning_trend == "improving":
+            personalized += "\n\n💪 看起来你在进步！继续保持这个学习节奏。"
+        elif learning_trend == "declining":
+            personalized += "\n\n🤔 如果觉得困难，可以回顾一下基础概念，或者尝试更简单的练习。"
+
+        return f"{personalized}\n\n{base_answer}"
 
 
 class QAAgent(BaseAgent):
-    """答疑代理 - 集成认知评估增强版"""
+    """答疑代理 - 科学认知API版本"""
 
     def __init__(self, personal_agent):
         super().__init__("QAAgent")
         self.thinking_agent = ThinkingQAAgent()
         self.kb_agent = KnowledgeBaseRetrievalAgent()
         self.personal_agent = personal_agent
-        self.cognition_api = get_cognition_api()
+        self.cognition_api = get_scientific_cognitive_api_sync()
 
     async def answer_question(self, question: str, user_id: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        """回答问题总入口 - 集成认知评估"""
+        """回答问题总入口 - 集成科学认知评估"""
         self.log_activity("开始处理问题", {"question": question, "user_id": user_id})
 
         # 记录交互开始时间
@@ -223,19 +234,20 @@ class QAAgent(BaseAgent):
                 "source": "llm_thinking",
                 "needs_thinking": True,
                 "cognitive_level_used": thinking_result["cognitive_level_used"],
-                "personalized": thinking_result["personalization_applied"]
+                "personalized": thinking_result["personalization_applied"],
+                "learning_parameters": thinking_result.get("learning_parameters", {})
             }
 
         # 计算处理时间
         processing_time = asyncio.get_event_loop().time() - start_time
 
-        # 记录认知评估数据
-        await self._record_cognitive_data(user_id, question, result, processing_time)
+        # 记录科学认知评估数据
+        await self._record_scientific_cognitive_data(user_id, question, result, processing_time)
 
         return result
 
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """处理答疑请求 - 集成认知评估"""
+        """处理答疑请求 - 集成科学认知评估"""
         question = request["content"]
         user_id = request["user_id"]
 
@@ -257,8 +269,8 @@ class QAAgent(BaseAgent):
         }
         await self.personal_agent.track_user_behavior(behavior_data)
 
-        # 获取认知洞察用于响应
-        cognitive_insights = await self._get_cognitive_insights(user_id, topic)
+        # 获取科学认知洞察用于响应
+        cognitive_insights = await self._get_scientific_cognitive_insights(user_id, topic)
 
         # 构建响应
         response_data = {
@@ -273,59 +285,73 @@ class QAAgent(BaseAgent):
             }
         }
 
-        # 添加学习建议（基于认知评估）
+        # 添加学习建议（基于科学认知评估）
         if result["needs_thinking"] or cognitive_insights.get("needs_improvement", False):
-            learning_tips = await self._generate_cognitive_learning_tips(user_id, topic)
+            learning_tips = await self._generate_scientific_learning_tips(user_id, topic)
             response_data["details"]["learning_tips"] = learning_tips
 
         return response_data
 
-    async def _record_cognitive_data(self, user_id: str, question: str, result: Dict[str, Any], processing_time: float):
-        """记录认知评估数据"""
+    async def _record_scientific_cognitive_data(self, user_id: str, question: str, result: Dict[str, Any], processing_time: float):
+        """记录科学认知评估数据"""
         try:
+            # 构建交互数据
             interaction_data = {
-                "processing_time": processing_time,
-                "correctness": 0.8,  # QA场景中假设回答质量高
-                "complexity": self._estimate_question_complexity(question),
-                "domain": self._extract_knowledge_domain(question),
-                "cognitive_level": "understand",  # QA主要涉及理解维度
-                "explanation_depth": result.get("cognitive_level_used", 0.5),
-                "response_quality": self._estimate_response_quality(result)
+                'type': 'qa',
+                'content': question,
+                'user_response': result.get('response', ''),
+                'processing_time': processing_time,
+                'context': '答疑交互',
+                'metadata': {
+                    'code_quality': 0.7,
+                    'explanation_quality': 0.7,
+                    'response_length': len(result.get('response', '')),
+                    'success': True,
+                    'interaction_type': 'qa'
+                }
             }
 
-            await self.cognition_api.record_interaction(
-                user_id, "qa", interaction_data
-            )
+            # 使用科学API方法
+            analysis_result = await self.cognition_api.analyze_learning_interaction(user_id, interaction_data)
+
+            if analysis_result['success']:
+                self.logger.info(f"科学认知分析完成")
+            else:
+                self.logger.warning(f"科学认知分析部分失败: {analysis_result.get('error', '未知错误')}")
 
         except Exception as e:
-            self.logger.warning(f"记录认知数据失败: {e}")
+            self.logger.warning(f"记录科学认知数据失败: {e}")
 
-    async def _get_cognitive_insights(self, user_id: str, topic: str) -> Dict[str, Any]:
-        """获取认知洞察"""
+    # 在 qa_agent.py 中修复 _get_scientific_cognitive_insights 方法：
+
+    async def _get_scientific_cognitive_insights(self, user_id: str, topic: str) -> Dict[str, Any]:
+        """获取科学认知洞察 - 修复方法调用"""
         try:
-            cognitive_level = await self.cognition_api.get_cognitive_level(user_id)
-            recommendations = await self.cognition_api.get_personalization_recommendations(user_id, "qa")
+            cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
+
+            # 修复：使用新的方法名
+            learning_recs = await self.cognition_api.get_learning_recommendations(user_id, f"学习{topic}")
 
             # 分析当前主题的掌握情况
-            topic_mastery = self._analyze_topic_mastery(cognitive_level, topic)
+            topic_mastery = self._analyze_topic_mastery(cognitive_state, topic)
 
             return {
-                "current_level": cognitive_level["overall_level"],
-                "learning_velocity": cognitive_level.get("learning_velocity", 0.5),
+                "current_level": cognitive_state["overall_cognitive_level"],
+                "learning_trend": cognitive_state.get("learning_trend", "stable"),
                 "topic_mastery": topic_mastery,
                 "needs_improvement": topic_mastery < 0.6,
-                "recommended_approach": recommendations.get("preferred_approach", "balanced"),
-                "difficulty_level": recommendations.get("difficulty_level", "intermediate")
+                "recommended_difficulty": learning_recs.get('recommendations', {}).get('recommended_difficulty',
+                                                                                       'intermediate'),
+                "focus_areas": learning_recs.get('recommendations', {}).get('focus_areas', [])
             }
         except Exception as e:
-            self.logger.warning(f"获取认知洞察失败: {e}")
+            self.logger.warning(f"获取科学认知洞察失败: {e}")
             return {}
-
-    async def _generate_cognitive_learning_tips(self, user_id: str, topic: str) -> List[str]:
-        """基于认知评估生成学习建议"""
+    async def _generate_scientific_learning_tips(self, user_id: str, topic: str) -> List[str]:
+        """基于科学认知评估生成学习建议"""
         try:
-            cognitive_insights = await self._get_cognitive_insights(user_id, topic)
-            recommendations = await self.cognition_api.get_personalization_recommendations(user_id, "qa")
+            cognitive_insights = await self._get_scientific_cognitive_insights(user_id, topic)
+            learning_recs = await self.cognition_api.get_learning_recommendations(user_id, f"掌握{topic}")
 
             tips = []
 
@@ -350,18 +376,17 @@ class QAAgent(BaseAgent):
                     "参与开源项目或技术社区讨论"
                 ])
 
-            # 基于推荐方法添加建议
-            approach = recommendations.get("preferred_approach", "")
-            if approach == "challenge_based":
-                tips.append("尝试解决一些有挑战性的编程问题")
-            elif approach == "project_based":
-                tips.append("通过实际项目来深化理解和应用")
+            # 基于学习推荐添加建议
+            recommendations = learning_recs.get('recommendations', {})
+            if 'suggested_topics' in recommendations:
+                next_topics = recommendations['suggested_topics'][:2]
+                tips.append(f"接下来可以学习: {', '.join(next_topics)}")
 
             return tips
 
         except Exception as e:
-            self.logger.warning(f"生成认知学习建议失败: {e}")
-            return self._generate_learning_tips(topic)  # 回退到原有方法
+            self.logger.warning(f"生成科学学习建议失败: {e}")
+            return self._generate_learning_tips(topic)
 
     def _estimate_question_complexity(self, question: str) -> float:
         """估计问题复杂度"""
@@ -380,40 +405,31 @@ class QAAgent(BaseAgent):
 
         return max(0.1, min(1.0, complexity))
 
-    def _estimate_response_quality(self, result: Dict[str, Any]) -> float:
-        """估计响应质量"""
-        quality = 0.7  # 基础质量
-
-        if result.get("personalized", False):
-            quality += 0.2
-
-        if result.get("needs_thinking", False):
-            quality += 0.1
-
-        return min(1.0, quality)
-
-    def _analyze_topic_mastery(self, cognitive_level: Dict[str, Any], topic: str) -> float:
+    def _analyze_topic_mastery(self, cognitive_state: Dict[str, Any], topic: str) -> float:
         """分析主题掌握程度"""
-        # 基于认知维度和领域知识估计主题掌握度
-        domain_mapping = {
-            "python_basics": "syntax",
+        knowledge_domains = cognitive_state.get("knowledge_domains", {})
+
+        # 映射主题到知识领域
+        topic_to_domain = {
+            "python_basics": "python_basics",
             "data_structures": "data_structures",
             "algorithms": "algorithms",
             "oop": "oop",
-            "web_development": "syntax",  # 近似映射
-            "data_science": "algorithms"  # 近似映射
+            "web_development": "python_basics",
+            "data_science": "algorithms"
         }
 
-        domain = domain_mapping.get(topic, "syntax")
-        domain_score = cognitive_level.get("knowledge_domains", {}).get(domain, 0.5)
+        domain = topic_to_domain.get(topic, "python_basics")
+        domain_score = knowledge_domains.get(domain, 0.5)
 
         # 结合理解维度得分
-        understanding_score = cognitive_level.get("cognitive_dimensions", {}).get("understand", 0.5)
+        cognitive_dimensions = cognitive_state.get("cognitive_dimensions", {})
+        understanding_score = cognitive_dimensions.get("understand", 0.5)
 
         return (domain_score + understanding_score) / 2
 
     def _extract_topic(self, question: str) -> str:
-        """从问题中提取主题 - 增强识别"""
+        """从问题中提取主题"""
         question_lower = question.lower()
 
         topic_keywords = {
@@ -431,23 +447,7 @@ class QAAgent(BaseAgent):
 
         return "general_programming"
 
-    def _extract_knowledge_domain(self, question: str) -> str:
-        """提取知识领域 - 用于认知评估"""
-        topic = self._extract_topic(question)
-
-        domain_mapping = {
-            "python_basics": "syntax",
-            "data_structures": "data_structures",
-            "algorithms": "algorithms",
-            "oop": "oop",
-            "web_development": "syntax",
-            "data_science": "algorithms",
-            "general_programming": "syntax"
-        }
-
-        return domain_mapping.get(topic, "syntax")
-
-    async def _generate_learning_tips(self, topic: str) -> List[str]:
+    def _generate_learning_tips(self, topic: str) -> List[str]:
         """生成学习建议 - 保留原有方法作为回退"""
         tips_map = {
             "python_basics": [

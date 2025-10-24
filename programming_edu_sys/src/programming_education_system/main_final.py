@@ -1,7 +1,7 @@
 # src/programming_education_system/main_final.py
 """
-编程教育智能体系统最终版主程序
-集成LLM-UM框架，保持所有原有功能
+编程教育智能体系统最终版主程序 - 完整修复版本
+修复所有缺失的方法和错误
 """
 import asyncio
 import logging
@@ -19,8 +19,10 @@ from programming_education_system.agents.exercise_agent import ExerciseGeneratio
 from programming_education_system.agents.evaluation_agent import AnswerEvaluationAgent
 from programming_education_system.agents.personal_agent import PersonalizedLearningAgent
 
-# 使用LLM-UM框架的认知评估API
-from programming_education_system.cognition_judger.cognitive_api_llm_um import get_cognition_api
+# 使用科学认知API
+from programming_education_system.cognition_judger.cognitive_api_scientific import get_scientific_cognitive_api, \
+    get_scientific_cognitive_api_sync
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -29,12 +31,12 @@ logging.basicConfig(
 
 
 class ProgrammingEducationSystem:
-    """编程教育智能体系统主类 - 最终版"""
+    """编程教育智能体系统主类 - 完整修复版本"""
 
     def __init__(self):
-        self.logger = logging.getLogger("System-Final")
-        # 初始化LLM-UM认知评估API
-        self.cognition_api = get_cognition_api()
+        self.logger = logging.getLogger("System-Scientific")
+        # 初始化科学认知API
+        self.cognition_api = get_scientific_cognitive_api_sync()
         self.initialize_agents()
 
     def initialize_agents(self):
@@ -56,28 +58,53 @@ class ProgrammingEducationSystem:
 
         self.logger.info("所有智能体初始化完成")
 
+    def _infer_learning_goal(self, content: str, request_type: str) -> str:
+        """推断学习目标 - 修复方法缺失"""
+        content_lower = content.lower()
+
+        # 基于内容关键词推断学习目标
+        if "函数" in content or "function" in content_lower:
+            return "掌握函数编程"
+        elif "类" in content or "class" in content_lower or "对象" in content:
+            return "理解面向对象编程"
+        elif "算法" in content or "algorithm" in content_lower:
+            return "学习算法设计"
+        elif "数据结构" in content or "data structure" in content_lower:
+            return "掌握数据结构"
+        elif "列表" in content or "list" in content_lower:
+            return "学习列表操作"
+        elif "字典" in content or "dict" in content_lower:
+            return "学习字典操作"
+        elif "练习" in content or "exercise" in content_lower:
+            return "提高编程实践能力"
+        elif "调试" in content or "debug" in content_lower:
+            return "学习调试技巧"
+        elif "错误" in content or "error" in content_lower:
+            return "理解错误处理"
+        else:
+            return "提高编程能力"
     async def process_user_request(self, request_type: str, content: str, user_id: str = "user_001"):
         """
-        处理用户请求 - 集成LLM-UM框架
+        处理用户请求 - 完全使用科学认知API
         """
         self.logger.info(f"处理用户请求 - 类型: {request_type}, 用户: {user_id}")
 
         try:
-            # 记录交互开始时间（用于认知评估）
+            # 记录交互开始时间
             start_time = asyncio.get_event_loop().time()
 
-            # 通过用户代理处理请求（保持原有功能不变）
+            # 通过用户代理处理请求
             result = await self.user_agent.receive_user_request(request_type, content, user_id)
             final_result = await self.user_agent.collect_and_return_results(result)
 
-            # 计算处理时间（用于认知评估）
+            # 计算处理时间
             processing_time = asyncio.get_event_loop().time() - start_time
 
-            # 记录认知评估数据（使用LLM-UM框架）
-            await self._record_cognitive_data(user_id, request_type, final_result, processing_time, content)
+            # 记录科学认知评估数据
+            await self._record_scientific_cognitive_data(user_id, request_type, content, final_result, processing_time)
 
-            # 集成认知信息到结果（使用LLM-UM框架）
-            final_result = await self._enhance_with_cognition(user_id, final_result, request_type)
+            # 集成科学认知信息到结果
+            final_result = await self._enhance_with_scientific_cognition(user_id, final_result, request_type, content)
 
             return final_result
 
@@ -90,67 +117,175 @@ class ProgrammingEducationSystem:
                 "response": "系统处理请求时出现错误"
             }
 
-    async def _record_cognitive_data(self,
-                                     user_id: str,
-                                     request_type: str,
-                                     result: Dict[str, Any],
-                                     processing_time: float,
-                                     original_content: str):
-        """记录认知评估数据 - 使用LLM-UM框架"""
+    async def _record_scientific_cognitive_data(self,
+                                                user_id: str,
+                                                request_type: str,
+                                                original_content: str,
+                                                result: Dict[str, Any],
+                                                processing_time: float):
+        """记录科学认知评估数据"""
         try:
+            # 构建交互数据
             interaction_data = {
-                "processing_time": processing_time,
-                "correctness": result.get("correctness", 0.5),
-                "complexity": self._estimate_complexity(result, original_content),
-                "domain": self._extract_knowledge_domain(result, original_content),
-                "cognitive_level": self._map_to_cognitive_level(request_type),
-                "code_quality": result.get("code_quality", 0.5),
-                "explanation_depth": result.get("explanation_quality", 0.5),
-                "response_length": len(result.get("response", "")),
-                "success": result.get("success", True)
+                'type': request_type,
+                'content': original_content,
+                'user_response': result.get('response', ''),
+                'processing_time': processing_time,
+                'context': f"请求类型: {request_type}",
+                'metadata': {
+                    'code_quality': result.get('code_quality', 0.5),
+                    'explanation_quality': result.get('explanation_quality', 0.5),
+                    'response_length': len(result.get('response', '')),
+                    'success': result.get('success', True),
+                    'interaction_type': request_type,
+                    'complexity': self._estimate_complexity(result, original_content)
+                }
             }
 
-            await self.cognition_api.record_interaction(
-                user_id, request_type, interaction_data
+            # 使用科学API方法
+            analysis_result = await self.cognition_api.analyze_learning_interaction(
+                user_id, interaction_data
             )
 
-            self.logger.info(f"LLM-UM认知数据记录完成 - 用户: {user_id}")
+            if analysis_result['success']:
+                self.logger.info(f"科学认知分析完成 - 用户: {user_id}")
+            else:
+                self.logger.warning(f"科学认知分析部分失败: {analysis_result.get('error', '未知错误')}")
 
         except Exception as e:
-            self.logger.warning(f"记录认知数据失败: {e}")
+            self.logger.warning(f"记录科学认知数据失败: {e}")
 
-    async def _enhance_with_cognition(self, user_id: str, result: Dict[str, Any], request_type: str) -> Dict[str, Any]:
-        """用认知数据增强结果 - 使用LLM-UM框架"""
+    async def _enhance_with_scientific_cognition(self,
+                                                 user_id: str,
+                                                 result: Dict[str, Any],
+                                                 request_type: str,
+                                                 original_content: str) -> Dict[str, Any]:
+        """用科学认知数据增强结果 - 修复方法调用"""
         try:
-            # 获取认知档案（来自LLM-UM框架）
-            cognitive_profile = await self.cognition_api.get_cognitive_level(user_id)
+            # 获取科学认知状态
+            cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
 
-            # 获取个性化推荐（来自LLM-UM框架）
-            recommendations = await self.cognition_api.get_personalization_recommendations(
-                user_id, request_type
+            # 获取个性化学习参数
+            learning_context = self._map_learning_context(request_type, original_content)
+            learning_params = await self.cognition_api.get_personalized_learning_parameters(
+                user_id, learning_context
             )
 
-            # 获取自适应参数（来自LLM-UM框架）
-            adaptive_params = await self.cognition_api.get_adaptive_content_parameters(user_id)
+            # 获取学习进展分析
+            progression_analysis = await self.cognition_api.get_learning_progression_analysis(user_id)
 
-            # 集成到结果中，不影响原有结构
+            # 获取认知强项弱项分析
+            strengths_weaknesses = await self.cognition_api.get_cognitive_strengths_weaknesses(user_id)
+
+            # 修复：获取学习推荐（使用修复后的方法）
+            learning_goal = self._infer_learning_goal(original_content, request_type)
+            learning_recommendations = await self.cognition_api.get_learning_recommendations(
+                user_id, learning_goal
+            )
+
+            # 集成到结果中
             if "cognitive_insights" not in result:
                 result["cognitive_insights"] = {}
 
             result["cognitive_insights"].update({
-                "user_profile": cognitive_profile,
-                "recommendations": recommendations,
-                "personalization_parameters": adaptive_params
+                "user_cognitive_state": cognitive_state,
+                "learning_parameters": learning_params,
+                "progression_analysis": progression_analysis,
+                "strengths_weaknesses": strengths_weaknesses,
+                "learning_recommendations": learning_recommendations,
+                "scientific_analysis_timestamp": cognitive_state.get('last_updated', '')
             })
 
+            # 添加科学认知指导的响应增强
+            if learning_params and 'parameters' in learning_params:
+                params = learning_params['parameters']
+                result["scientifically_guided_response"] = self._apply_scientific_guidance(
+                    result.get('response', ''), params, cognitive_state
+                )
+
             self.logger.info(
-                f"LLM-UM认知增强完成 - 用户: {user_id}, 认知水平: {cognitive_profile.get('overall_level', 0.5):.3f}")
+                f"科学认知增强完成 - 用户: {user_id}, 认知水平: {cognitive_state.get('overall_cognitive_level', 0.5):.3f}")
 
             return result
 
         except Exception as e:
-            self.logger.warning(f"集成认知数据失败: {e}")
+            self.logger.warning(f"集成科学认知数据失败: {e}")
             return result
+
+    def _infer_learning_goal(self, content: str, request_type: str) -> str:
+        """推断学习目标 - 修复方法缺失"""
+        content_lower = content.lower()
+
+        # 基于内容关键词推断学习目标
+        if "函数" in content or "function" in content_lower:
+            return "掌握函数编程"
+        elif "类" in content or "class" in content_lower or "对象" in content:
+            return "理解面向对象编程"
+        elif "算法" in content or "algorithm" in content_lower:
+            return "学习算法设计"
+        elif "数据结构" in content or "data structure" in content_lower:
+            return "掌握数据结构"
+        elif "列表" in content or "list" in content_lower:
+            return "学习列表操作"
+        elif "字典" in content or "dict" in content_lower:
+            return "学习字典操作"
+        elif "练习" in content or "exercise" in content_lower:
+            return "提高编程实践能力"
+        elif "调试" in content or "debug" in content_lower:
+            return "学习调试技巧"
+        elif "错误" in content or "error" in content_lower:
+            return "理解错误处理"
+        else:
+            return "提高编程能力"
+
+    def _map_learning_context(self, request_type: str, content: str) -> str:
+        """映射学习上下文"""
+        content_lower = content.lower()
+
+        if request_type == "qa":
+            if "基础" in content or "入门" in content or "什么是" in content:
+                return "new_concept"
+            elif "如何" in content or "怎么" in content or "方法" in content:
+                return "skill_application"
+            else:
+                return "conceptual_understanding"
+        elif request_type == "exercise":
+            return "practice"
+        elif request_type == "evaluation":
+            return "feedback"
+        else:
+            return "general"
+
+    def _apply_scientific_guidance(self, original_response: str, params: Dict[str, Any],
+                                   cognitive_state: Dict[str, Any]) -> str:
+        """应用科学认知指导调整响应"""
+        guided_response = original_response
+
+        # 基于解释深度调整
+        explanation_depth = params.get('explanation_depth', 0.7)
+        if explanation_depth < 0.4 and len(guided_response) > 300:
+            sentences = guided_response.split('。')
+            if len(sentences) > 3:
+                guided_response = '。'.join(sentences[:3]) + '。'
+
+        # 基于提示策略
+        hint_strategy = params.get('hint_strategy', 'balanced')
+        if hint_strategy == "guided":
+            guided_response += "\n\n💡 提示：如果需要更多指导，请随时告诉我！"
+        elif hint_strategy == "minimal":
+            # 最少提示，不添加额外内容
+            pass
+        else:
+            guided_response += "\n\n💡 有任何疑问都可以继续问我。"
+
+        # 基于认知水平添加鼓励
+        cognitive_level = cognitive_state.get('overall_cognitive_level', 0.5)
+        if cognitive_level > 0.7:
+            guided_response += "\n\n🚀 你的理解能力很棒！可以尝试更复杂的挑战。"
+        elif cognitive_level < 0.4:
+            guided_response += "\n\n🌱 学习是一个循序渐进的过程，坚持下去！"
+
+        return guided_response
 
     def _estimate_complexity(self, result: Dict[str, Any], original_content: str) -> float:
         """估计交互复杂度"""
@@ -163,77 +298,40 @@ class ProgrammingEducationSystem:
         elif len(response) < 100:
             complexity -= 0.1
 
-        # 基于原始内容长度
-        if len(original_content) > 200:
-            complexity += 0.2
-
-        # 基于结果中的详细信息
-        details = result.get("details", {})
-        if "exercises" in details and len(details["exercises"]) > 0:
-            complexity += 0.2
-        if "code_analysis" in details:
+        # 基于技术关键词
+        complex_keywords = ["继承", "多态", "递归", "算法", "复杂度", "设计模式", "架构", "异步", "并发"]
+        if any(keyword in original_content for keyword in complex_keywords):
             complexity += 0.3
-        if "learning_tips" in details:
-            complexity += 0.1
 
         return max(0.1, min(1.0, complexity))
-
-    def _extract_knowledge_domain(self, result: Dict[str, Any], original_content: str) -> str:
-        """提取知识领域"""
-        # 首先尝试从结果中提取
-        details = result.get("details", {})
-        if "topic" in details:
-            topic = details["topic"]
-            domain_mapping = {
-                "python_basics": "syntax",
-                "data_structures": "data_structures",
-                "algorithms": "algorithms",
-                "oop": "oop",
-                "web_development": "syntax",
-                "data_science": "algorithms",
-                "general_programming": "syntax"
-            }
-            return domain_mapping.get(topic, "syntax")
-
-        # 基于响应内容分析知识领域
-        response = result.get("response", "").lower()
-        content = original_content.lower()
-
-        combined_text = response + " " + content
-
-        if any(word in combined_text for word in ["class", "object", "inheritance", "多态", "封装"]):
-            return "oop"
-        elif any(word in combined_text for word in ["function", "lambda", "map", "filter", "reduce"]):
-            return "functional"
-        elif any(word in combined_text for word in ["algorithm", "sort", "search", "递归", "算法"]):
-            return "algorithms"
-        elif any(word in combined_text for word in ["list", "dict", "tuple", "set", "数据结构"]):
-            return "data_structures"
-        elif any(word in combined_text for word in ["thread", "process", "async", "并发", "多线程"]):
-            return "concurrency"
-        else:
-            return "syntax"
-
-    def _map_to_cognitive_level(self, request_type: str) -> str:
-        """映射到认知水平"""
-        mapping = {
-            "qa": "understand",
-            "exercise": "apply",
-            "evaluation": "evaluate",
-            "personal": "analyze",
-            "auto": "understand"  # 默认类型
-        }
-        return mapping.get(request_type, "remember")
 
     async def get_system_status(self) -> Dict[str, Any]:
         """获取系统状态"""
         return {
             "system": "运行中",
-            "llm_um_framework": "已集成",
+            "cognitive_framework": "科学认知评估框架",
             "agents_initialized": True,
-            "cognitive_api": "LLM-UM",
+            "scientific_api": "Scientific-Cognitive-API",
             "timestamp": asyncio.get_event_loop().time()
         }
+
+    async def get_user_cognitive_report(self, user_id: str) -> Dict[str, Any]:
+        """获取用户认知报告"""
+        try:
+            cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
+            progression_analysis = await self.cognition_api.get_learning_progression_analysis(user_id)
+            strengths_weaknesses = await self.cognition_api.get_cognitive_strengths_weaknesses(user_id)
+
+            return {
+                "user_id": user_id,
+                "cognitive_state": cognitive_state,
+                "progression_analysis": progression_analysis,
+                "strengths_weaknesses": strengths_weaknesses,
+                "report_generated_at": asyncio.get_event_loop().time()
+            }
+        except Exception as e:
+            self.logger.error(f"获取用户认知报告失败: {e}")
+            return {"error": str(e)}
 
 
 # 全局系统实例
@@ -249,57 +347,43 @@ def get_system():
 
 
 async def demo():
-    """演示系统功能 - 集成LLM-UM框架"""
+    """演示系统功能"""
     system = get_system()
 
     print("=" * 60)
-    print("编程教育智能体系统 - 最终版演示 (LLM-UM集成)")
+    print("编程教育智能体系统 - 科学认知框架演示")
     print("=" * 60)
 
     # 演示1: 答疑功能
     print("\n1. 演示答疑功能:")
     result1 = await system.process_user_request(
         "qa",
-        "Python中如何定义函数？",
+        "Python中如何定义函数？函数参数有哪些类型？",
         "student_001"
     )
-    print(f"答疑结果: {result1['response']}")
+    print(f"答疑结果: {result1['response'][:200]}...")
 
-    # 显示认知信息（来自LLM-UM）
+    # 显示科学认知信息
     if "cognitive_insights" in result1:
         insights = result1["cognitive_insights"]
-        profile = insights.get("user_profile", {})
-        print(f"LLM-UM认知水平: {profile.get('overall_level', 0.5):.2f}")
+        state = insights.get("user_cognitive_state", {})
+        print(f"科学认知水平: {state.get('overall_cognitive_level', 0.5):.2f}")
 
     # 演示2: 练习生成
     print("\n2. 演示练习生成:")
     result2 = await system.process_user_request(
         "exercise",
-        "生成一个初级难度的Python练习",
+        "生成一个关于Python列表操作的练习",
         "student_001"
     )
-    print(f"练习生成结果: {result2['response']}")
+    print(f"练习生成结果: {result2['response'][:150]}...")
 
-    # 显示认知信息（来自LLM-UM）
-    if "cognitive_insights" in result2:
-        insights = result2["cognitive_insights"]
-        recommendations = insights.get("recommendations", {})
-        print(f"LLM-UM推荐难度: {recommendations.get('difficulty_level', 'unknown')}")
-
-    # 演示3: 个性化建议
-    print("\n3. 演示个性化建议:")
-    result3 = await system.process_user_request(
-        "personal",
-        "给我一些学习建议",
-        "student_001"
-    )
-    print(f"个性化建议: {result3['response']}")
-
-    # 显示认知信息（来自LLM-UM）
-    if "cognitive_insights" in result3:
-        insights = result3["cognitive_insights"]
-        params = insights.get("personalization_parameters", {})
-        print(f"LLM-UM个性化参数 - 解释深度: {params.get('explanation_depth', 0.5):.2f}")
+    # 演示3: 获取科学认知报告
+    print("\n3. 演示科学认知报告:")
+    cognitive_report = await system.get_user_cognitive_report("student_001")
+    if "cognitive_state" in cognitive_report:
+        state = cognitive_report["cognitive_state"]
+        print(f"认知维度: {state.get('cognitive_dimensions', {})}")
 
     print("\n" + "=" * 60)
     print("演示完成!")
