@@ -15,6 +15,7 @@ from programming_education_system.cognition_judger.cognitive_api_scientific impo
 
 logger = logging.getLogger(__name__)
 
+
 class ThinkingQAAgent:
     """思考答疑子代理 - 科学认知API版本"""
 
@@ -57,7 +58,7 @@ class ThinkingQAAgent:
         explanation_depth = parameters.get("explanation_depth", 0.7)
         learning_chars = cognitive_state.get("learning_characteristics", {})
 
-        base_prompt = "你是一个耐心、专业的编程教育专家，擅长根据学习者的认知水平调整解释方式。"
+        base_prompt = "你是一个耐心、专业的编程教育专家，擅长根据学习者的认知水平调整解释方式。你需要结合主代理给你的要求完成答疑任务"
 
         if cognitive_level < 0.4:
             # 初学者级别
@@ -322,14 +323,12 @@ class QAAgent(BaseAgent):
         except Exception as e:
             self.logger.warning(f"记录科学认知数据失败: {e}")
 
-    # 在 qa_agent.py 中修复 _get_scientific_cognitive_insights 方法：
-
     async def _get_scientific_cognitive_insights(self, user_id: str, topic: str) -> Dict[str, Any]:
         """获取科学认知洞察 - 修复方法调用"""
         try:
             cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
 
-            # 修复：使用新的方法名
+            # 获取学习推荐
             learning_recs = await self.cognition_api.get_learning_recommendations(user_id, f"学习{topic}")
 
             # 分析当前主题的掌握情况
@@ -340,13 +339,13 @@ class QAAgent(BaseAgent):
                 "learning_trend": cognitive_state.get("learning_trend", "stable"),
                 "topic_mastery": topic_mastery,
                 "needs_improvement": topic_mastery < 0.6,
-                "recommended_difficulty": learning_recs.get('recommendations', {}).get('recommended_difficulty',
-                                                                                       'intermediate'),
+                "recommended_difficulty": learning_recs.get('recommendations', {}).get('recommended_difficulty', 'intermediate'),
                 "focus_areas": learning_recs.get('recommendations', {}).get('focus_areas', [])
             }
         except Exception as e:
             self.logger.warning(f"获取科学认知洞察失败: {e}")
             return {}
+
     async def _generate_scientific_learning_tips(self, user_id: str, topic: str) -> List[str]:
         """基于科学认知评估生成学习建议"""
         try:
@@ -387,23 +386,6 @@ class QAAgent(BaseAgent):
         except Exception as e:
             self.logger.warning(f"生成科学学习建议失败: {e}")
             return self._generate_learning_tips(topic)
-
-    def _estimate_question_complexity(self, question: str) -> float:
-        """估计问题复杂度"""
-        complexity = 0.5
-
-        # 基于问题长度
-        if len(question) > 100:
-            complexity += 0.2
-        elif len(question) < 30:
-            complexity -= 0.2
-
-        # 基于技术关键词
-        complex_keywords = ["继承", "多态", "递归", "算法", "复杂度", "设计模式", "架构"]
-        if any(keyword in question for keyword in complex_keywords):
-            complexity += 0.3
-
-        return max(0.1, min(1.0, complexity))
 
     def _analyze_topic_mastery(self, cognitive_state: Dict[str, Any], topic: str) -> float:
         """分析主题掌握程度"""
