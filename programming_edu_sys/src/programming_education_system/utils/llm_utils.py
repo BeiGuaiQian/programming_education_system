@@ -17,7 +17,7 @@ class LLMClient:
         try:
             # 尝试导入OpenAI客户端
             from openai import AsyncOpenAI
-            from .config import Config
+            from programming_education_system.config.llm_config import Config
 
             self.client = AsyncOpenAI(
                 api_key=Config.DEEPSEEK_API_KEY,

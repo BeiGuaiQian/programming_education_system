@@ -1,4 +1,4 @@
-# programming_education_system/utils/config.py
+# programming_education_system/utils/llm_config.py
 """
 系统配置文件
 """

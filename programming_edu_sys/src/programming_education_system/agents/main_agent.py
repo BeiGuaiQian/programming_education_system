@@ -1,6 +1,6 @@
-# src/programming_education_system/agents/main_agent.py
+# 修改 src/programming_education_system/agents/main_agent.py
 """
-主代理 - 专注于意图识别和请求分发
+主代理 - 支持上下文感知的意图识别
 """
 from typing import Dict, Any, TYPE_CHECKING
 import logging
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class MainAgent(BaseAgent):
-    """主代理，专注于意图识别和请求分发"""
+    """主代理 - 增强版，支持上下文感知"""
 
     def __init__(self, qa_agent: 'QAAgent', exercise_agent: 'ExerciseGenerationAgent',
                  evaluation_agent: 'AnswerEvaluationAgent', personal_agent: 'PersonalizedLearningAgent'):
@@ -35,24 +35,17 @@ class MainAgent(BaseAgent):
             self.llm_client = llm_client
         return self.llm_client
 
-    async def receive_from_user_agent(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """接收用户代理请求"""
-        enhancement_info = request.get("enhancement_info", {})
-        self.log_activity("接收用户代理请求", {
-            "content": request["content"][:50] + "...",
-            "was_enhanced": enhancement_info.get("was_enhanced", False)
-        })
-        return await self.process(request)
-
-    async def analyze_intent_with_llm(self, content: str) -> str:
-        """使用大模型分析用户意图"""
-        system_prompt = """你是一个智能意图分析助手。你的任务是根据用户的输入，判断用户的意图属于以下哪种类型：
+    async def analyze_intent_with_context(self, content: str, context: Dict[str, Any]) -> str:
+        """使用上下文分析用户意图"""
+        system_prompt = """你是一个智能意图分析助手。你的任务是根据用户的输入和对话历史，判断用户的意图。
 
 可用的意图类型：
 1. "qa" - 答疑类：用户询问编程概念、语法、技术问题等
 2. "exercise" - 练习类：用户请求生成编程练习、题目、测试等
 3. "evaluation" - 评价类：用户请求评价代码、检查代码质量、分析代码问题等
 4. "personal" - 个性化类：用户请求学习建议、学习路径、个性化推荐等
+
+请结合对话历史来理解用户的当前意图，确保准确识别用户的真实需求。
 
 请严格按照以下JSON格式返回结果：
 {"intent": "qa|exercise|evaluation|personal", "confidence": 0.0-1.0, "reason": "简要说明判断理由"}
@@ -65,39 +58,127 @@ class MainAgent(BaseAgent):
 
 请确保只返回JSON格式，不要有其他内容。"""
 
+        # 构建包含上下文的用户消息
+        context_info = ""
+        if context.get('recent_history'):
+            context_info = "\n\n对话历史：\n"
+            for i, history in enumerate(context['recent_history']):
+                context_info += f"{i + 1}. 用户: {history.get('user_input', '')}\n"
+                context_info += f"   助手: {history.get('agent_response', '')[:50]}...\n"
+
+        user_message = f"""用户当前输入：{content}
+{context_info}
+
+请分析用户的当前意图："""
+
         try:
             llm_client = self._get_llm_client()
             response = await llm_client.generate_response(
                 system_prompt,
-                f"用户输入：{content}",
+                user_message,
                 use_cache=True
             )
 
-            # 解析JSON响应
             intent_data = self._parse_llm_response(response)
 
             if intent_data and "intent" in intent_data:
-                self.log_activity("LLM意图分析完成", {
+                self.log_activity("上下文感知意图分析完成", {
                     "intent": intent_data["intent"],
                     "confidence": intent_data.get("confidence", 0),
-                    "reason": intent_data.get("reason", "")
+                    "reason": intent_data.get("reason", ""),
+                    "history_used": len(context.get('recent_history', [])) > 0
                 })
                 return intent_data["intent"]
             else:
                 logger.warning(f"无法解析LLM意图分析结果: {response}")
-                return "qa"  # 默认回退到答疑
+                return await self._fallback_intent_analysis(content)
 
         except Exception as e:
-            logger.error(f"LLM意图分析失败: {e}")
+            logger.error(f"上下文感知意图分析失败: {e}")
             return await self._fallback_intent_analysis(content)
 
+    async def analyze_intent(self, request: Dict[str, Any]) -> str:
+        """分析用户意图 - 使用上下文感知"""
+        content = request["content"].strip()
+        request_type = request.get("type", "auto")
+        context = request.get("context", {})
+
+        # 如果指定了类型且不是auto，直接使用
+        if request_type != "auto" and request_type in ["qa", "exercise", "evaluation", "personal"]:
+            self.log_activity("使用指定请求类型", {"type": request_type})
+            return request_type
+
+        # 使用上下文感知的智能意图识别
+        self.log_activity("开始上下文感知意图识别", {
+            "content": content[:50] + "...",
+            "has_history": len(context.get('recent_history', [])) > 0
+        })
+        intent = await self.analyze_intent_with_context(content, context)
+
+        return intent
+
+    async def dispatch_to_sub_agent(self, intent: str, request: Dict[str, Any]) -> Dict[str, Any]:
+        """分发请求到子代理 - 传递上下文"""
+        self.log_activity("分发请求到子代理", {
+            "intent": intent,
+            "has_context": len(request.get("context", {}).get("recent_history", [])) > 0
+        })
+
+        agents = {
+            "qa": self.qa_agent,
+            "exercise": self.exercise_agent,
+            "evaluation": self.evaluation_agent,
+            "personal": self.personal_agent
+        }
+
+        target_agent = agents.get(intent, self.qa_agent)
+
+        # 确保请求中包含上下文信息
+        if "context" not in request:
+            request["context"] = {}
+
+        result = await target_agent.process(request)
+
+        # 在结果中添加意图信息和增强信息
+        result["detected_intent"] = intent
+        result["enhancement_applied"] = request.get("enhancement_info", {}).get("was_enhanced", False)
+        result["context_used"] = request.get("enhancement_info", {}).get("context_used", False)
+
+        return result
+
+    async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """处理请求 - 支持上下文"""
+        # 分析意图（使用上下文）
+        intent = await self.analyze_intent(request)
+        self.log_activity("意图分析完成", {
+            "intent": intent,
+            "content": request["content"][:30] + "...",
+            "context_used": len(request.get("context", {}).get("recent_history", [])) > 0
+        })
+
+        # 分发到对应代理
+        result = await self.dispatch_to_sub_agent(intent, request)
+
+        # 记录用户行为
+        behavior_data = {
+            "user_id": request["user_id"],
+            "intent": intent,
+            "content": request["content"],
+            "original_content": request.get("original_content", request["content"]),
+            "was_enhanced": request.get("enhancement_info", {}).get("was_enhanced", False),
+            "context_used": request.get("enhancement_info", {}).get("context_used", False),
+            "timestamp": request.get("timestamp", "unknown")
+        }
+        await self.personal_agent.track_user_behavior(behavior_data)
+
+        return result
+
+    # 保留原有的辅助方法
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:
         """解析LLM的JSON响应"""
         try:
-            # 尝试直接解析JSON
             return json.loads(response.strip())
         except json.JSONDecodeError:
-            # 如果直接解析失败，尝试提取JSON部分
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 try:
@@ -105,7 +186,6 @@ class MainAgent(BaseAgent):
                 except json.JSONDecodeError:
                     pass
 
-        # 如果JSON解析都失败，尝试基于文本内容推断
         response_lower = response.lower()
         if '"intent": "qa"' in response_lower or "'intent': 'qa'" in response_lower:
             return {"intent": "qa", "confidence": 0.7, "reason": "从文本中提取"}
@@ -120,30 +200,26 @@ class MainAgent(BaseAgent):
 
     async def _fallback_intent_analysis(self, content: str) -> str:
         """LLM失败时的回退意图分析（基于规则）"""
+        # 保持原有的回退逻辑不变
         content_lower = content.lower()
 
-        # 练习相关关键词
         exercise_keywords = [
             "练习", "题目", "习题", "作业", "题", "exercise", "problem", "题目",
             "生成练习", "做练习", "练习题", "编程题", "算法题", "给我题", "出一道"
         ]
 
-        # 评价相关关键词
         evaluation_keywords = [
             "评价", "检查", "评审", "review", "evaluate", "代码", "代码评价",
             "检查代码", "代码检查", "代码评审", "运行结果", "测试代码", "分析代码"
         ]
 
-        # 个性化相关关键词
         personal_keywords = [
             "建议", "推荐", "应该学", "学习路径", "suggestion", "advice",
             "学习建议", "下一步", "如何学习", "学习计划", "路径", "规划"
         ]
 
-        # 检测代码片段
         has_code = "def " in content or "import " in content or ("=" in content and ":" in content)
 
-        # 优先级：评价 > 练习 > 个性化 > 答疑
         if any(keyword in content_lower for keyword in evaluation_keywords) or has_code:
             return "evaluation"
 
@@ -153,63 +229,4 @@ class MainAgent(BaseAgent):
         if any(keyword in content_lower for keyword in personal_keywords):
             return "personal"
 
-        # 默认为答疑
         return "qa"
-
-    async def analyze_intent(self, request: Dict[str, Any]) -> str:
-        """分析用户意图 - 使用大模型"""
-        content = request["content"].strip()
-        request_type = request.get("type", "auto")
-
-        # 如果指定了类型且不是auto，直接使用
-        if request_type != "auto" and request_type in ["qa", "exercise", "evaluation", "personal"]:
-            self.log_activity("使用指定请求类型", {"type": request_type})
-            return request_type
-
-        # 使用大模型进行智能意图识别
-        self.log_activity("开始智能意图识别", {"content": content[:50] + "..."})
-        intent = await self.analyze_intent_with_llm(content)
-
-        return intent
-
-    async def dispatch_to_sub_agent(self, intent: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        """分发请求到子代理"""
-        self.log_activity("分发请求到子代理", {"intent": intent})
-
-        agents = {
-            "qa": self.qa_agent,
-            "exercise": self.exercise_agent,
-            "evaluation": self.evaluation_agent,
-            "personal": self.personal_agent
-        }
-
-        target_agent = agents.get(intent, self.qa_agent)
-        result = await target_agent.process(request)
-
-        # 在结果中添加意图信息和增强信息
-        result["detected_intent"] = intent
-        result["enhancement_applied"] = request.get("enhancement_info", {}).get("was_enhanced", False)
-
-        return result
-
-    async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """处理请求"""
-        # 分析意图
-        intent = await self.analyze_intent(request)
-        self.log_activity("意图分析完成", {"intent": intent, "content": request["content"][:30] + "..."})
-
-        # 分发到对应代理
-        result = await self.dispatch_to_sub_agent(intent, request)
-
-        # 记录用户行为
-        behavior_data = {
-            "user_id": request["user_id"],
-            "intent": intent,
-            "content": request["content"],
-            "original_content": request.get("original_content", request["content"]),
-            "was_enhanced": request.get("enhancement_info", {}).get("was_enhanced", False),
-            "timestamp": request.get("timestamp", "unknown")
-        }
-        await self.personal_agent.track_user_behavior(behavior_data)
-
-        return result
