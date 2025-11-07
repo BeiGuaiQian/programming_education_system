@@ -1,7 +1,7 @@
 # src/programming_education_system/main_final.py
 """
 编程教育智能体系统最终版主程序 - 完整修复版本
-修复所有缺失的方法和错误
+修复所有缺失的方法和错误，配合增强的主代理
 """
 import asyncio
 import logging
@@ -12,10 +12,10 @@ from typing import Dict, Any
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from programming_education_system.agents.user_agent import UserAgent
+from programming_education_system.agents.user_agent import EnhancedUserAgent as UserAgent
 from programming_education_system.agents.main_agent import MainAgent
 from programming_education_system.agents.qa_agent import QAAgent
-from programming_education_system.agents.exercise_agent import ExerciseGenerationAgent
+from programming_education_system.agents.exercise_agent import EnhancedExerciseGenerationAgent as ExerciseGenerationAgent
 from programming_education_system.agents.evaluation_agent import AnswerEvaluationAgent
 from programming_education_system.agents.personal_agent import PersonalizedLearningAgent
 
@@ -31,23 +31,27 @@ logging.basicConfig(
 
 
 class ProgrammingEducationSystem:
-    """编程教育智能体系统主类 - 完整修复版本"""
+    """编程教育智能体系统主类 - 完整修复版本，支持上下文感知"""
 
     def __init__(self):
         self.logger = logging.getLogger("System-Scientific")
         # 初始化科学认知API
         self.cognition_api = get_scientific_cognitive_api_sync()
+        # 初始化用户上下文存储
+        self.user_contexts = {}  # user_id -> context
         self.initialize_agents()
 
     def initialize_agents(self):
-        """初始化所有智能体"""
+        """初始化所有智能体 - 修复参数传递问题"""
         self.logger.info("初始化智能体...")
 
         # 按依赖顺序初始化代理
         self.personal_agent = PersonalizedLearningAgent()
-        self.qa_agent = QAAgent(self.personal_agent)
-        self.exercise_agent = ExerciseGenerationAgent(self.personal_agent)
-        self.evaluation_agent = AnswerEvaluationAgent(self.personal_agent)
+
+        # 修复：正确初始化各个代理，确保参数匹配
+        self.qa_agent = QAAgent(personal_agent=self.personal_agent)  # QAAgent 可能不需要 personal_agent 参数
+        self.exercise_agent = ExerciseGenerationAgent(personal_agent=self.personal_agent)  # EnhancedExerciseGenerator 不需要 personal_agent 参数
+        self.evaluation_agent = AnswerEvaluationAgent(personal_agent=self.personal_agent)  # AnswerEvaluationAgent 可能不需要 personal_agent 参数
         self.main_agent = MainAgent(
             self.qa_agent,
             self.exercise_agent,
@@ -58,34 +62,38 @@ class ProgrammingEducationSystem:
 
         self.logger.info("所有智能体初始化完成")
 
-    def _infer_learning_goal(self, content: str, request_type: str) -> str:
-        """推断学习目标 - 修复方法缺失"""
-        content_lower = content.lower()
+    def _get_user_context(self, user_id: str) -> Dict[str, Any]:
+        """获取或创建用户上下文"""
+        if user_id not in self.user_contexts:
+            self.user_contexts[user_id] = {
+                "user_id": user_id,
+                "recent_history": [],
+                "learning_goals": [],
+                "preferred_difficulty": "medium",
+                "last_interaction_time": asyncio.get_event_loop().time()
+            }
+        return self.user_contexts[user_id]
 
-        # 基于内容关键词推断学习目标
-        if "函数" in content or "function" in content_lower:
-            return "掌握函数编程"
-        elif "类" in content or "class" in content_lower or "对象" in content:
-            return "理解面向对象编程"
-        elif "算法" in content or "algorithm" in content_lower:
-            return "学习算法设计"
-        elif "数据结构" in content or "data structure" in content_lower:
-            return "掌握数据结构"
-        elif "列表" in content or "list" in content_lower:
-            return "学习列表操作"
-        elif "字典" in content or "dict" in content_lower:
-            return "学习字典操作"
-        elif "练习" in content or "exercise" in content_lower:
-            return "提高编程实践能力"
-        elif "调试" in content or "debug" in content_lower:
-            return "学习调试技巧"
-        elif "错误" in content or "error" in content_lower:
-            return "理解错误处理"
-        else:
-            return "提高编程能力"
+    def _update_user_context(self, user_id: str, user_input: str, agent_response: str):
+        """更新用户上下文历史"""
+        context = self._get_user_context(user_id)
+
+        # 添加新的交互到历史
+        context["recent_history"].append({
+            "user_input": user_input,
+            "agent_response": agent_response,
+            "timestamp": asyncio.get_event_loop().time()
+        })
+
+        # 保持历史长度合理（最近10条）
+        if len(context["recent_history"]) > 10:
+            context["recent_history"] = context["recent_history"][-10:]
+
+        context["last_interaction_time"] = asyncio.get_event_loop().time()
+
     async def process_user_request(self, request_type: str, content: str, user_id: str = "user_001"):
         """
-        处理用户请求 - 完全使用科学认知API
+        处理用户请求 - 完全使用科学认知API，支持上下文感知
         """
         self.logger.info(f"处理用户请求 - 类型: {request_type}, 用户: {user_id}")
 
@@ -93,12 +101,27 @@ class ProgrammingEducationSystem:
             # 记录交互开始时间
             start_time = asyncio.get_event_loop().time()
 
-            # 通过用户代理处理请求
-            result = await self.user_agent.receive_user_request(request_type, content, user_id)
+            # 获取用户上下文
+            user_context = self._get_user_context(user_id)
+
+            # 构建包含上下文的请求
+            enhanced_request = {
+                "type": request_type,
+                "content": content,
+                "user_id": user_id,
+                "context": user_context,
+                "timestamp": start_time
+            }
+
+            # 通过用户代理处理请求（现在包含上下文）
+            result = await self.user_agent.receive_user_request(request_type="auto",content=content, user_id = user_id)
             final_result = await self.user_agent.collect_and_return_results(result)
 
             # 计算处理时间
             processing_time = asyncio.get_event_loop().time() - start_time
+
+            # 更新用户上下文
+            self._update_user_context(user_id, content, final_result.get('response', ''))
 
             # 记录科学认知评估数据
             await self._record_scientific_cognitive_data(user_id, request_type, content, final_result, processing_time)
@@ -138,7 +161,9 @@ class ProgrammingEducationSystem:
                     'response_length': len(result.get('response', '')),
                     'success': result.get('success', True),
                     'interaction_type': request_type,
-                    'complexity': self._estimate_complexity(result, original_content)
+                    'complexity': self._estimate_complexity(result, original_content),
+                    'context_used': result.get('context_used', False),
+                    'enhancement_applied': result.get('enhancement_applied', False)
                 }
             }
 
@@ -213,7 +238,7 @@ class ProgrammingEducationSystem:
             return result
 
     def _infer_learning_goal(self, content: str, request_type: str) -> str:
-        """推断学习目标 - 修复方法缺失"""
+        """推断学习目标"""
         content_lower = content.lower()
 
         # 基于内容关键词推断学习目标
@@ -307,11 +332,14 @@ class ProgrammingEducationSystem:
 
     async def get_system_status(self) -> Dict[str, Any]:
         """获取系统状态"""
+        active_users = len(self.user_contexts)
         return {
             "system": "运行中",
             "cognitive_framework": "科学认知评估框架",
             "agents_initialized": True,
             "scientific_api": "Scientific-Cognitive-API",
+            "active_users": active_users,
+            "user_contexts_stored": active_users,
             "timestamp": asyncio.get_event_loop().time()
         }
 
@@ -322,16 +350,40 @@ class ProgrammingEducationSystem:
             progression_analysis = await self.cognition_api.get_learning_progression_analysis(user_id)
             strengths_weaknesses = await self.cognition_api.get_cognitive_strengths_weaknesses(user_id)
 
+            # 获取用户上下文信息
+            user_context = self._get_user_context(user_id)
+
             return {
                 "user_id": user_id,
                 "cognitive_state": cognitive_state,
                 "progression_analysis": progression_analysis,
                 "strengths_weaknesses": strengths_weaknesses,
+                "interaction_history": {
+                    "total_interactions": len(user_context.get("recent_history", [])),
+                    "recent_activity": user_context.get("last_interaction_time", 0)
+                },
                 "report_generated_at": asyncio.get_event_loop().time()
             }
         except Exception as e:
             self.logger.error(f"获取用户认知报告失败: {e}")
             return {"error": str(e)}
+
+    async def clear_user_context(self, user_id: str):
+        """清除用户上下文（用于测试或重置）"""
+        if user_id in self.user_contexts:
+            del self.user_contexts[user_id]
+            self.logger.info(f"已清除用户 {user_id} 的上下文")
+
+    async def get_user_context_summary(self, user_id: str) -> Dict[str, Any]:
+        """获取用户上下文摘要"""
+        context = self._get_user_context(user_id)
+        return {
+            "user_id": user_id,
+            "history_length": len(context.get("recent_history", [])),
+            "last_interaction": context.get("last_interaction_time", 0),
+            "learning_goals": context.get("learning_goals", []),
+            "preferred_difficulty": context.get("preferred_difficulty", "medium")
+        }
 
 
 # 全局系统实例
@@ -347,40 +399,65 @@ def get_system():
 
 
 async def demo():
-    """演示系统功能"""
+    """演示系统功能 - 展示上下文感知能力"""
     system = get_system()
 
     print("=" * 60)
-    print("编程教育智能体系统 - 科学认知框架演示")
+    print("编程教育智能体系统 - 科学认知框架演示（上下文感知版）")
     print("=" * 60)
 
-    # 演示1: 答疑功能
-    print("\n1. 演示答疑功能:")
+    user_id = "student_001"
+
+    # 演示1: 连续对话展示上下文感知
+    print("\n1. 演示上下文感知对话:")
+
+    # 第一次提问
+    print(f"\n第一次提问:")
     result1 = await system.process_user_request(
         "qa",
-        "Python中如何定义函数？函数参数有哪些类型？",
-        "student_001"
+        "Python中什么是函数？",
+        user_id
     )
-    print(f"答疑结果: {result1['response'][:200]}...")
+    print(f"回答: {result1['response'][:100]}...")
+
+    # 后续提问（依赖上下文）
+    print(f"\n后续提问（依赖上下文）:")
+    result2 = await system.process_user_request(
+        "qa",
+        "参数有哪些类型？",
+        user_id
+    )
+    print(f"回答: {result2['response'][:100]}...")
+
+    # 显示上下文使用情况
+    print(f"\n上下文使用情况:")
+    print(f"- 增强应用: {result2.get('enhancement_applied', False)}")
+    print(f"- 上下文使用: {result2.get('context_used', False)}")
 
     # 显示科学认知信息
-    if "cognitive_insights" in result1:
-        insights = result1["cognitive_insights"]
+    if "cognitive_insights" in result2:
+        insights = result2["cognitive_insights"]
         state = insights.get("user_cognitive_state", {})
         print(f"科学认知水平: {state.get('overall_cognitive_level', 0.5):.2f}")
 
     # 演示2: 练习生成
     print("\n2. 演示练习生成:")
-    result2 = await system.process_user_request(
+    result3 = await system.process_user_request(
         "exercise",
         "生成一个关于Python列表操作的练习",
-        "student_001"
+        user_id
     )
-    print(f"练习生成结果: {result2['response'][:150]}...")
+    print(f"练习生成结果: {result3['response'][:150]}...")
 
-    # 演示3: 获取科学认知报告
-    print("\n3. 演示科学认知报告:")
-    cognitive_report = await system.get_user_cognitive_report("student_001")
+    # 演示3: 获取用户上下文摘要
+    print("\n3. 演示用户上下文摘要:")
+    context_summary = await system.get_user_context_summary(user_id)
+    print(f"交互历史长度: {context_summary['history_length']}")
+    print(f"最后交互时间: {context_summary['last_interaction']}")
+
+    # 演示4: 获取科学认知报告
+    print("\n4. 演示科学认知报告:")
+    cognitive_report = await system.get_user_cognitive_report(user_id)
     if "cognitive_state" in cognitive_report:
         state = cognitive_report["cognitive_state"]
         print(f"认知维度: {state.get('cognitive_dimensions', {})}")

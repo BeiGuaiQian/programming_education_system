@@ -1,6 +1,6 @@
 # 修改 src/programming_education_system/agents/main_agent.py
 """
-主代理 - 支持上下文感知的意图识别
+主代理 - 支持上下文感知的意图识别和增强处理
 """
 from typing import Dict, Any, TYPE_CHECKING
 import logging
@@ -8,7 +8,7 @@ import json
 import re
 
 from programming_education_system.agents.qa_agent import QAAgent
-from programming_education_system.agents.exercise_agent import ExerciseGenerationAgent
+from programming_education_system.agents.exercise_agent import EnhancedExerciseGenerationAgent
 from programming_education_system.agents.evaluation_agent import AnswerEvaluationAgent
 from programming_education_system.agents.personal_agent import PersonalizedLearningAgent
 from programming_education_system.agents.base_agent import BaseAgent
@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class MainAgent(BaseAgent):
-    """主代理 - 增强版，支持上下文感知"""
+    """主代理 - 增强版，支持上下文感知和请求增强"""
 
-    def __init__(self, qa_agent: 'QAAgent', exercise_agent: 'ExerciseGenerationAgent',
+    def __init__(self, qa_agent: 'QAAgent', exercise_agent: 'EnhancedExerciseGenerationAgent',
                  evaluation_agent: 'AnswerEvaluationAgent', personal_agent: 'PersonalizedLearningAgent'):
         super().__init__("MainAgent")
         self.qa_agent = qa_agent
@@ -34,6 +34,77 @@ class MainAgent(BaseAgent):
             from programming_education_system.utils.llm_utils import llm_client
             self.llm_client = llm_client
         return self.llm_client
+
+    async def enhance_request_with_context(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """使用上下文增强用户请求"""
+        original_content = request["content"]
+        context = request.get("context", {})
+
+        # 如果没有上下文或内容已经很明确，直接返回
+        if not context.get('recent_history') or len(original_content.strip()) > 50:
+            return {
+                **request,
+                "enhancement_info": {
+                    "was_enhanced": False,
+                    "context_used": False,
+                    "original_content": original_content
+                }
+            }
+
+        try:
+            system_prompt = """你是一个上下文理解助手。你的任务是根据对话历史，完善用户当前简短的输入，使其更加完整和明确。
+
+请保持用户的原意，只是补充必要的上下文信息，使请求更加清晰。
+
+请直接返回完善后的用户输入内容，不要添加任何解释。"""
+
+            history_context = "\n对话历史：\n"
+            for i, history in enumerate(context['recent_history'][-3:]):  # 只使用最近3条历史
+                history_context += f"- 用户: {history.get('user_input', '')}\n"
+                history_context += f"- 助手: {history.get('agent_response', '')[:100]}...\n"
+
+            user_message = f"""用户当前输入：{original_content}
+{history_context}
+
+请根据对话历史，完善用户的当前输入："""
+
+            llm_client = self._get_llm_client()
+            enhanced_content = await llm_client.generate_response(
+                system_prompt,
+                user_message,
+                use_cache=True
+            )
+
+            if enhanced_content and len(enhanced_content.strip()) > len(original_content.strip()):
+                self.log_activity("请求增强完成", {
+                    "original": original_content,
+                    "enhanced": enhanced_content[:100] + "...",
+                    "history_used": len(context['recent_history'])
+                })
+
+                return {
+                    **request,
+                    "content": enhanced_content.strip(),
+                    "original_content": original_content,
+                    "enhancement_info": {
+                        "was_enhanced": True,
+                        "context_used": True,
+                        "original_content": original_content,
+                        "enhancement_reason": "基于对话历史补充上下文"
+                    }
+                }
+
+        except Exception as e:
+            logger.warning(f"请求增强失败: {e}")
+
+        return {
+            **request,
+            "enhancement_info": {
+                "was_enhanced": False,
+                "context_used": False,
+                "original_content": original_content
+            }
+        }
 
     async def analyze_intent_with_context(self, content: str, context: Dict[str, Any]) -> str:
         """使用上下文分析用户意图"""
@@ -62,9 +133,9 @@ class MainAgent(BaseAgent):
         context_info = ""
         if context.get('recent_history'):
             context_info = "\n\n对话历史：\n"
-            for i, history in enumerate(context['recent_history']):
+            for i, history in enumerate(context['recent_history'][-10:]):  # 限制历史长度
                 context_info += f"{i + 1}. 用户: {history.get('user_input', '')}\n"
-                context_info += f"   助手: {history.get('agent_response', '')[:50]}...\n"
+                context_info += f"   助手: {history.get('agent_response', '')}...\n"
 
         user_message = f"""用户当前输入：{content}
 {context_info}
@@ -121,7 +192,8 @@ class MainAgent(BaseAgent):
         """分发请求到子代理 - 传递上下文"""
         self.log_activity("分发请求到子代理", {
             "intent": intent,
-            "has_context": len(request.get("context", {}).get("recent_history", [])) > 0
+            "has_context": len(request.get("context", {}).get("recent_history", [])) > 0,
+            "was_enhanced": request.get("enhancement_info", {}).get("was_enhanced", False)
         })
 
         agents = {
@@ -137,6 +209,7 @@ class MainAgent(BaseAgent):
         if "context" not in request:
             request["context"] = {}
 
+        # 处理请求并获取结果
         result = await target_agent.process(request)
 
         # 在结果中添加意图信息和增强信息
@@ -144,36 +217,43 @@ class MainAgent(BaseAgent):
         result["enhancement_applied"] = request.get("enhancement_info", {}).get("was_enhanced", False)
         result["context_used"] = request.get("enhancement_info", {}).get("context_used", False)
 
+        # 如果请求被增强过，在结果中保留原始内容
+        if request.get("enhancement_info", {}).get("was_enhanced", False):
+            result["original_content"] = request.get("enhancement_info", {}).get("original_content", request["content"])
+
         return result
 
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """处理请求 - 支持上下文"""
-        # 分析意图（使用上下文）
-        intent = await self.analyze_intent(request)
+        """处理请求 - 支持上下文增强和意图识别"""
+        # 步骤1: 使用上下文增强请求（如果需要）
+        enhanced_request = await self.enhance_request_with_context(request)
+
+        # 步骤2: 分析意图（使用上下文）
+        intent = await self.analyze_intent(enhanced_request)
         self.log_activity("意图分析完成", {
             "intent": intent,
-            "content": request["content"][:30] + "...",
-            "context_used": len(request.get("context", {}).get("recent_history", [])) > 0
+            "content": enhanced_request["content"][:30] + "...",
+            "context_used": len(enhanced_request.get("context", {}).get("recent_history", [])) > 0,
+            "was_enhanced": enhanced_request.get("enhancement_info", {}).get("was_enhanced", False)
         })
 
-        # 分发到对应代理
-        result = await self.dispatch_to_sub_agent(intent, request)
+        # 步骤3: 分发到对应代理
+        result = await self.dispatch_to_sub_agent(intent, enhanced_request)
 
-        # 记录用户行为
+        # 步骤4: 记录用户行为
         behavior_data = {
-            "user_id": request["user_id"],
+            "user_id": enhanced_request["user_id"],
             "intent": intent,
-            "content": request["content"],
-            "original_content": request.get("original_content", request["content"]),
-            "was_enhanced": request.get("enhancement_info", {}).get("was_enhanced", False),
-            "context_used": request.get("enhancement_info", {}).get("context_used", False),
-            "timestamp": request.get("timestamp", "unknown")
+            "content": enhanced_request["content"],
+            "original_content": enhanced_request.get("original_content", enhanced_request["content"]),
+            "was_enhanced": enhanced_request.get("enhancement_info", {}).get("was_enhanced", False),
+            "context_used": enhanced_request.get("enhancement_info", {}).get("context_used", False),
+            "timestamp": enhanced_request.get("timestamp", "unknown")
         }
         await self.personal_agent.track_user_behavior(behavior_data)
 
         return result
 
-    # 保留原有的辅助方法
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:
         """解析LLM的JSON响应"""
         try:
@@ -200,7 +280,6 @@ class MainAgent(BaseAgent):
 
     async def _fallback_intent_analysis(self, content: str) -> str:
         """LLM失败时的回退意图分析（基于规则）"""
-        # 保持原有的回退逻辑不变
         content_lower = content.lower()
 
         exercise_keywords = [

@@ -1,8 +1,6 @@
 # setup.py
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
 
 with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = fh.read().splitlines()
@@ -13,7 +11,6 @@ setup(
     author="Ken Lu",
     author_email="2577911774@qq.com",
     description="A multi-agent programming education system",
-    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BeiGuaiQian/programming_education_system",
     package_dir={"": "src"},

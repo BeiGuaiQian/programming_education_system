@@ -86,7 +86,7 @@ class FinalInteractiveCLI:
 
     async def _process_user_input(self, user_input: str):
         """处理用户输入 - 集成真正的LLM认知框架"""
-        print("🔧 正在处理您的请求...")
+        print("正在处理您的请求...")
 
         try:
             # 使用 "auto" 类型，让系统自动处理

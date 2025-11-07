@@ -552,7 +552,7 @@ class EnhancedLLMUMFramework:
     async def _incremental_scientific_update(self,
                                              current_profile: UserCognitiveProfile,
                                              new_analysis: InteractionAnalysis) -> UserCognitiveProfile:
-        """基于认知科学的渐进更新 - 修复类型错误"""
+        """基于认知科学的渐进更新 """
         try:
             # 安全获取表现得分 - 处理可能的字典类型
             performance_score = self._extract_performance_score(new_analysis)
