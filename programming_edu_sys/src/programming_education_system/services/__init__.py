@@ -1,6 +1,5 @@
-"""
-服务函数模块
-"""
+"""Service package exports."""
 
-# from .llm_service import LLMService
-# __all__ = ['LLMService']
+from .llm_service import LLMService
+
+__all__ = ["LLMService"]

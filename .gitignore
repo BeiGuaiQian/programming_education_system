@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+
+*.db
+*.db-journal
+
+.env
+.env.*
+!.env.example
+
+programming_edu_sys/src/.runtime/

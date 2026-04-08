@@ -1,17 +1,6 @@
+﻿"""Programming education system package."""
 
-"""
-编程教育智能体系统
-一个基于多智能体协作的编程学习平台
-"""
+from programming_education_system.main_final import ProgrammingEducationSystem, demo, get_system
 
-# __version__ = "1.0.0"
-# __author__ = "Your Name"
-# __email__ = "your.email@example.com"
-#
-# from .main import ProgrammingEducationSystem, get_system, demo
-#
-# __all__ = [
-#     "ProgrammingEducationSystem",
-#     "get_system",
-#     "demo"
-# ]
+__all__ = ["ProgrammingEducationSystem", "get_system", "demo"]
+__version__ = "1.0.0"

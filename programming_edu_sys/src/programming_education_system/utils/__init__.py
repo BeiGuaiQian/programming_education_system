@@ -1,13 +1,6 @@
-# src/programming_education_system/utils/__init__.py
-"""
-工具函数模块
-"""
+"""Utility package exports."""
 
-# from .config import Config
-# from .llm_utils import LLMClient, llm_client
-#
-# __all__ = [
-#     "Config",
-#     "LLMClient",
-#     "llm_client"
-# ]
+from .context_manager import context_manager
+from .llm_utils import LLMClient, llm_client
+
+__all__ = ["LLMClient", "context_manager", "llm_client"]

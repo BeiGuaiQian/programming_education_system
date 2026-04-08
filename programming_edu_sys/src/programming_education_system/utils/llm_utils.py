@@ -1,93 +1,184 @@
-# programming_education_system/utils/llm_utils.py
-"""
-LLM工具函数 - 修复版
-"""
+﻿"""Shared LLM utilities with graceful fallback behavior."""
+
+from __future__ import annotations
+
 import asyncio
+import hashlib
 import logging
-from typing import Dict, Any, List, Optional
-import json
+import random
+import time
+from collections import OrderedDict
+from typing import Any, Dict, Optional
+
+from programming_education_system.config.llm_config import Config
 
 logger = logging.getLogger(__name__)
 
 
 class LLMClient:
-    """LLM客户端封装类"""
+    """Async LLM client wrapper with retry, caching, and offline fallback."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        self.cache: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self.cache_ttl = Config.LLM_CACHE_TTL
+        self.max_cache_size = Config.MAX_CACHE_SIZE
+        self.max_retries = Config.MAX_RETRIES
+        self.timeout = Config.TIMEOUT
+        self.initialized = False
+        self.client = None
+        self.model = Config.DEEPSEEK_MODEL
+        self.openai_error_types = (Exception,)
+        self.fallback_reason = "uninitialized"
+        self._initialize_client()
+
+    def _initialize_client(self) -> None:
         try:
-            # 尝试导入OpenAI客户端
-            from openai import AsyncOpenAI
-            from programming_education_system.config.llm_config import Config
+            from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
+
+            if not Config.DEEPSEEK_API_KEY:
+                self.fallback_reason = "missing_api_key"
+                logger.info("LLM API key is not configured; using fallback responses.")
+                return
 
             self.client = AsyncOpenAI(
                 api_key=Config.DEEPSEEK_API_KEY,
-                base_url=Config.DEEPSEEK_BASE_URL
+                base_url=Config.DEEPSEEK_BASE_URL,
+                timeout=self.timeout,
             )
-            self.model = Config.DEEPSEEK_MODEL
+            self.openai_error_types = (APIError, APITimeoutError, RateLimitError)
             self.initialized = True
-        except ImportError as e:
-            logger.warning(f"OpenAI客户端导入失败: {e}")
-            self.initialized = False
-        except Exception as e:
-            logger.error(f"LLM客户端初始化失败: {e}")
-            self.initialized = False
+            self.fallback_reason = ""
+            logger.info("LLM client initialized with model %s", self.model)
+        except ImportError as exc:
+            self.fallback_reason = "missing_openai_sdk"
+            logger.info("OpenAI SDK is not installed; using fallback responses.")
+        except Exception as exc:
+            self.fallback_reason = "initialization_failed"
+            logger.info("LLM client initialization failed; using fallback responses: %s", exc)
 
-        self.cache = {}  # 简单的内存缓存
+    def _generate_cache_key(self, system_prompt: str, user_message: str) -> str:
+        content = f"{system_prompt}\n---\n{user_message}"
+        return hashlib.md5(content.encode("utf-8")).hexdigest()
 
-    async def generate_response(self, system_prompt: str, user_message: str,
-                                use_cache: bool = True) -> str:
-        """
-        生成LLM响应
+    def _get_cached_response(self, cache_key: str) -> Optional[str]:
+        cached_item = self.cache.get(cache_key)
+        if not cached_item:
+            return None
+        if time.time() - cached_item["timestamp"] >= self.cache_ttl:
+            self.cache.pop(cache_key, None)
+            return None
+        self.cache.move_to_end(cache_key)
+        return str(cached_item["response"])
 
-        Args:
-            system_prompt: 系统提示词
-            user_message: 用户消息
-            use_cache: 是否使用缓存
+    def _set_cached_response(self, cache_key: str, response: str) -> None:
+        if len(self.cache) >= self.max_cache_size:
+            self.cache.popitem(last=False)
+        self.cache[cache_key] = {"response": response, "timestamp": time.time()}
 
-        Returns:
-            LLM响应文本
-        """
-        if not self.initialized:
-            logger.error("LLM客户端未初始化")
-            return '{"error": "LLM client not initialized"}'
+    async def generate_response(
+        self,
+        system_prompt: str,
+        user_message: str,
+        use_cache: bool = True,
+    ) -> str:
+        return await self.generate_response_with_retry(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            use_cache=use_cache,
+            max_retries=self.max_retries,
+        )
 
-        cache_key = f"{system_prompt}:{user_message}"
+    async def generate_response_with_retry(
+        self,
+        system_prompt: str,
+        user_message: str,
+        use_cache: bool = True,
+        max_retries: int = 3,
+    ) -> str:
+        cache_key = self._generate_cache_key(system_prompt, user_message) if use_cache else None
+        if cache_key:
+            cached = self._get_cached_response(cache_key)
+            if cached is not None:
+                return cached
 
-        # 检查缓存
-        if use_cache and cache_key in self.cache:
-            logger.info("Using cached response")
-            return self.cache[cache_key]
-
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.1,
-                max_tokens=2000
+        if not self.initialized or self.client is None:
+            response = self._get_fallback_response(
+                system_prompt,
+                user_message,
+                self.fallback_reason or "llm_unavailable",
             )
+            if cache_key:
+                self._set_cached_response(cache_key, response)
+            return response
 
-            result = response.choices[0].message.content
+        last_exception: Optional[Exception] = None
+        for attempt in range(max_retries):
+            try:
+                result = await self._request_completion(system_prompt, user_message)
+                if cache_key:
+                    self._set_cached_response(cache_key, result)
+                return result
+            except self.openai_error_types as exc:
+                last_exception = exc
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(self._calculate_backoff(attempt))
+            except Exception as exc:
+                last_exception = exc
+                break
 
-            # 更新缓存
-            if use_cache:
-                self.cache[cache_key] = result
-                # 简单的缓存大小控制
-                if len(self.cache) > 100:
-                    self.cache.pop(next(iter(self.cache)))
+        response = self._get_fallback_response(
+            system_prompt,
+            user_message,
+            str(last_exception) if last_exception else "unknown_error",
+        )
+        if cache_key:
+            self._set_cached_response(cache_key, response)
+        return response
 
-            return result
+    async def _request_completion(self, system_prompt: str, user_message: str) -> str:
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.2,
+            max_tokens=2000,
+        )
+        content = response.choices[0].message.content
+        return content if isinstance(content, str) else str(content)
 
-        except Exception as e:
-            logger.error(f"LLM调用失败: {e}")
-            return f'{{"error": "LLM request failed: {str(e)}"}}'
+    def _calculate_backoff(self, attempt: int) -> float:
+        return min(10.0, (2**attempt) + random.uniform(0, 0.5))
 
-    def clear_cache(self):
-        """清空缓存"""
+    def _get_fallback_response(self, system_prompt: str, user_message: str, error_msg: str) -> str:
+        message = user_message.lower()
+        logger.info("Using fallback LLM response due to: %s", error_msg)
+
+        if any(keyword in message for keyword in ["exercise", "problem", "practice", "练习", "题"]):
+            return "目前无法调用大模型，我先按基础模式为你处理练习相关请求。"
+        if any(keyword in message for keyword in ["evaluate", "review", "feedback", "代码", "评估"]):
+            return "目前无法调用大模型，我先给出基于规则的代码分析结果。"
+        if any(keyword in message for keyword in ["path", "suggest", "advice", "建议", "学习"]):
+            return "目前无法调用大模型，我先根据现有学习记录给出基础建议。"
+        if "intent" in system_prompt.lower():
+            return '{"intent": "qa", "confidence": 0.3, "reason": "fallback"}'
+        return "目前无法调用大模型，我先按系统内置逻辑继续处理。"
+
+    def clear_cache(self) -> None:
         self.cache.clear()
 
+    def get_cache_stats(self) -> Dict[str, Any]:
+        return {
+            "total": len(self.cache),
+            "max_size": self.max_cache_size,
+            "ttl": self.cache_ttl,
+            "initialized": self.initialized,
+            "model": self.model,
+        }
 
-# 全局LLM客户端实例
+    def set_cache_ttl(self, ttl: int) -> None:
+        self.cache_ttl = max(1, int(ttl))
+
+
 llm_client = LLMClient()
