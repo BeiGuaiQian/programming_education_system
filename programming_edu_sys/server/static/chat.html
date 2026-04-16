@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>编程教育智能体系统 - 对话页</title>
+  <style>
+    :root {
+      --bg: linear-gradient(180deg, #f7fbff, #edf3f8);
+      --panel: rgba(255, 255, 255, 0.94);
+      --line: #d7e1ea;
+      --ink: #17232f;
+      --muted: #677788;
+      --accent: #1565c0;
+      --accent-2: #0f766e;
+      --user-bubble: linear-gradient(135deg, #dbeafe, #c7e9ff);
+      --bot-bubble: linear-gradient(135deg, #ffffff, #f4f8fb);
+      --soft: #f4f8fb;
+      --shadow: 0 24px 60px rgba(20, 36, 52, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(21, 101, 192, 0.10), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.08), transparent 28%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .layout {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(215, 225, 234, 0.95);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .sidebar {
+      padding: 20px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 16px;
+      min-height: calc(100vh - 40px);
+    }
+
+    .brand h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      line-height: 1.25;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .primary,
+    .secondary,
+    .ghost {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+
+    .primary:hover,
+    .secondary:hover,
+    .ghost:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      color: white;
+      background: linear-gradient(135deg, var(--accent), #2a7de1);
+    }
+
+    .secondary {
+      color: white;
+      background: linear-gradient(135deg, var(--accent-2), #139689);
+    }
+
+    .ghost {
+      background: #eef5fb;
+      color: var(--ink);
+    }
+
+    .history {
+      overflow: auto;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .history-item {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 16px;
+      padding: 14px;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
+    }
+
+    .history-item:hover {
+      transform: translateY(-1px);
+      border-color: #b8d2ec;
+    }
+
+    .history-item.active {
+      border-color: rgba(21, 101, 192, 0.45);
+      background: #edf5ff;
+    }
+
+    .history-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .history-preview,
+    .history-time {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .chat {
+      min-height: calc(100vh - 40px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .chat-head {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .chat-head h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .status-pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #edf7f6;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .chat-body {
+      padding: 26px 24px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .message-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .message-row.user {
+      align-items: flex-end;
+    }
+
+    .message-row.bot {
+      align-items: flex-start;
+    }
+
+    .message-meta {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 0 6px;
+    }
+
+    .bubble {
+      position: relative;
+      max-width: min(76ch, 88%);
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(215, 225, 234, 0.9);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.75;
+      box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+    }
+
+    .bubble.user {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble.bot {
+      background: var(--bot-bubble);
+      border-bottom-left-radius: 6px;
+    }
+
+    .composer {
+      padding: 18px 24px 24px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 12px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: white;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .chat {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="card sidebar">
+      <section class="brand">
+        <h1>编程教育智能体系统</h1>
+        <div class="meta" id="userMeta">正在加载用户信息...</div>
+      </section>
+
+      <div class="toolbar">
+        <button class="secondary" id="newChatBtn" type="button">新建对话</button>
+        <button class="ghost" id="goLearnBtn" type="button">学习中心</button>
+        <button class="ghost" id="goQuestionsBtn" type="button">题库大全</button>
+        <button class="ghost" id="goProfileBtn" type="button">个人中心</button>
+        <button class="ghost" id="logoutBtn" type="button">退出</button>
+      </div>
+
+      <section class="history" id="historyList">
+        <div class="empty-state">还没有对话记录。发送第一条消息后，这里会自动生成会话列表。</div>
+      </section>
+
+      <div class="meta">
+        左侧可切换历史对话。右侧会按会话保存消息，你重新登录后也能继续查看。
+      </div>
+    </aside>
+
+    <section class="card chat">
+      <header class="chat-head">
+        <div>
+          <h2 id="chatTitle">新对话</h2>
+          <div class="meta">支持问答、练习生成、代码评估和个性化学习建议</div>
+        </div>
+        <div class="status-pill" id="authStatus">已登录</div>
+      </header>
+
+      <main class="chat-body" id="chatBody">
+        <div class="empty-state">欢迎进入系统。你可以先试试“请解释 Python 的函数”，或者“生成一道列表练习题”。</div>
+      </main>
+
+      <section class="composer">
+        <div class="controls">
+          <select id="requestType">
+            <option value="auto">自动判断</option>
+            <option value="qa">问答</option>
+            <option value="exercise">练习生成</option>
+            <option value="evaluation">代码评估</option>
+            <option value="personal">学习建议</option>
+          </select>
+          <textarea id="content" placeholder="请输入你的问题、练习需求或代码"></textarea>
+          <button class="primary" id="sendBtn" type="button">发送</button>
+        </div>
+        <div class="hint">代码评估模式下可以直接粘贴 Python 代码。系统会自动把消息写入当前会话。</div>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    const userMeta = document.getElementById("userMeta");
+    const historyList = document.getElementById("historyList");
+    const chatBody = document.getElementById("chatBody");
+    const chatTitle = document.getElementById("chatTitle");
+    const authStatus = document.getElementById("authStatus");
+    const goLearnBtn = document.getElementById("goLearnBtn");
+    const goQuestionsBtn = document.getElementById("goQuestionsBtn");
+    const goProfileBtn = document.getElementById("goProfileBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const newChatBtn = document.getElementById("newChatBtn");
+    const requestType = document.getElementById("requestType");
+    const content = document.getElementById("content");
+    const sendBtn = document.getElementById("sendBtn");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+    let username = localStorage.getItem("pes_username");
+    let currentConversationId = null;
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      username = data.username;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    const formatTime = (value) => {
+      if (!value) return "";
+      return new Date(value).toLocaleString("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "登录已过期");
+      }
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "请求失败");
+      }
+      return data;
+    };
+
+    const renderMessages = (messages) => {
+      chatBody.innerHTML = "";
+      if (!messages.length) {
+        chatBody.innerHTML = '<div class="empty-state">这个对话还没有消息，发送第一条内容开始吧。</div>';
+        return;
+      }
+
+      for (const message of messages) {
+        const row = document.createElement("div");
+        row.className = `message-row ${message.role === "assistant" ? "bot" : "user"}`;
+
+        const meta = document.createElement("div");
+        meta.className = "message-meta";
+        meta.textContent = `${message.role === "assistant" ? "智能体" : "你"} · ${formatTime(message.created_at)}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = `bubble ${message.role === "assistant" ? "bot" : "user"}`;
+        bubble.textContent = message.content;
+
+        row.appendChild(meta);
+        row.appendChild(bubble);
+        chatBody.appendChild(row);
+      }
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+    };
+
+    const renderConversations = (items) => {
+      historyList.innerHTML = "";
+      if (!items.length) {
+        historyList.innerHTML = '<div class="empty-state">还没有对话记录。发送第一条消息后，这里会自动生成会话列表。</div>';
+        return;
+      }
+
+      for (const item of items) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `history-item${item.id === currentConversationId ? " active" : ""}`;
+        button.innerHTML = `
+          <div class="history-title">${item.title}</div>
+          <div class="history-preview">${(item.last_message || "暂无内容").slice(0, 48)}</div>
+          <div class="history-time">${formatTime(item.updated_at)} · ${item.message_count} 条消息</div>
+        `;
+        button.addEventListener("click", () => loadConversation(item.id));
+        historyList.appendChild(button);
+      }
+    };
+
+    const loadConversations = async () => {
+      const data = await authedFetch("/chat/conversations");
+      renderConversations(data.items || []);
+      return data.items || [];
+    };
+
+    const loadConversation = async (conversationId) => {
+      currentConversationId = conversationId;
+      const data = await authedFetch(`/chat/conversations/${conversationId}`);
+      chatTitle.textContent = data.conversation.title;
+      renderMessages(data.messages || []);
+      await loadConversations();
+    };
+
+    const appendOptimisticMessage = (text) => {
+      const existingEmpty = chatBody.querySelector(".empty-state");
+      if (existingEmpty) existingEmpty.remove();
+
+      const row = document.createElement("div");
+      row.className = "message-row user";
+      row.innerHTML = `
+        <div class="message-meta">你 · 刚刚</div>
+        <div class="bubble user"></div>
+      `;
+      row.querySelector(".bubble").textContent = text;
+      chatBody.appendChild(row);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    };
+
+    const resetConversationView = () => {
+      currentConversationId = null;
+      chatTitle.textContent = "新对话";
+      chatBody.innerHTML = '<div class="empty-state">欢迎进入系统。你可以先试试“请解释 Python 的函数”，或者“生成一道列表练习题”。</div>';
+      loadConversations();
+    };
+
+    const sendMessage = async () => {
+      const text = content.value.trim();
+      if (!text) return;
+
+      appendOptimisticMessage(text);
+      content.value = "";
+      sendBtn.disabled = true;
+      sendBtn.textContent = "发送中...";
+      authStatus.textContent = "处理中";
+
+      try {
+        const result = await authedFetch("/agent/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            request_type: requestType.value,
+            content: text,
+            conversation_id: currentConversationId
+          })
+        });
+        currentConversationId = result.conversation_id;
+        await loadConversation(currentConversationId);
+      } catch (error) {
+        const row = document.createElement("div");
+        row.className = "message-row bot";
+        row.innerHTML = `
+          <div class="message-meta">系统 · 刚刚</div>
+          <div class="bubble bot"></div>
+        `;
+        row.querySelector(".bubble").textContent = `请求失败：${error.message}`;
+        chatBody.appendChild(row);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "发送";
+        authStatus.textContent = "已登录";
+      }
+    };
+
+    sendBtn.addEventListener("click", sendMessage);
+    content.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    newChatBtn.addEventListener("click", resetConversationView);
+    goLearnBtn.addEventListener("click", () => {
+      window.location.href = "/learn";
+    });
+    goQuestionsBtn.addEventListener("click", () => {
+      window.location.href = "/questions";
+    });
+    goProfileBtn.addEventListener("click", () => {
+      window.location.href = "/profile";
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        const me = await authedFetch("/auth/me");
+        userMeta.textContent = `当前用户：${me.username}`;
+        const items = await loadConversations();
+        if (items.length) {
+          await loadConversation(items[0].id);
+        }
+      } catch (error) {
+        clearAuth();
+        window.location.href = "/";
+      }
+    };
+
+    bootstrap();
+  </script>
+</body>
+</html>

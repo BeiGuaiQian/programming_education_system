@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>题库大全 - 编程教育智能体系统</title>
+  <style>
+    :root {
+      --bg: linear-gradient(180deg, #f8fbff, #eef5f3);
+      --panel: rgba(255, 255, 255, 0.96);
+      --line: #d7e1ea;
+      --ink: #17232f;
+      --muted: #667789;
+      --accent: #0f766e;
+      --accent-2: #2563eb;
+      --soft: #f4f8fb;
+      --warn: #b7791f;
+      --shadow: 0 22px 54px rgba(20, 36, 52, 0.10);
+      --code: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.10), transparent 28%),
+        var(--bg);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .layout {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(215, 225, 234, 0.94);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .sidebar {
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      min-height: calc(100vh - 44px);
+    }
+
+    .main {
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+      min-height: calc(100vh - 44px);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+    }
+
+    .title {
+      font-size: 26px;
+      line-height: 1.25;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #13a092);
+    }
+
+    .secondary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent-2), #3b82f6);
+    }
+
+    .ghost {
+      background: #eef5fb;
+      color: var(--ink);
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      background: #fff;
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #344657;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--accent);
+      margin-top: 6px;
+    }
+
+    .question-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .question-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: #fbfdff;
+      display: grid;
+      gap: 10px;
+    }
+
+    .question-card.highlight {
+      border-color: rgba(15, 118, 110, 0.42);
+      background: #f0fdfa;
+    }
+
+    .row-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .question-title {
+      font-weight: 900;
+      line-height: 1.4;
+    }
+
+    .pill {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #edf7f6;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .pill.warn {
+      background: #fff7df;
+      color: var(--warn);
+    }
+
+    .tag-list {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #eef5fb;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .code {
+      background: var(--code);
+      color: #e5edf9;
+      border-radius: 12px;
+      padding: 12px;
+      white-space: pre-wrap;
+      overflow: auto;
+      font: 13px/1.7 Consolas, "Courier New", monospace;
+    }
+
+    .quiz-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    @media (max-width: 1040px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar,
+      .main {
+        min-height: auto;
+      }
+      .question-grid,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="card sidebar">
+      <div>
+        <h1 class="title">题库大全</h1>
+        <div class="meta" id="userMeta">正在加载用户信息...</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="ghost" id="goLearnBtn" type="button">学习中心</button>
+        <button class="ghost" id="goProfileBtn" type="button">个人中心</button>
+        <button class="ghost" id="goChatBtn" type="button">对话页</button>
+        <button class="ghost" id="logoutBtn" type="button">退出</button>
+      </div>
+
+      <section class="panel">
+        <h3>筛选题库</h3>
+        <label>
+          主题
+          <select id="topicFilter"><option value="all">全部主题</option></select>
+        </label>
+        <label>
+          难度
+          <select id="difficultyFilter">
+            <option value="all">全部难度</option>
+            <option value="beginner">beginner</option>
+            <option value="intermediate">intermediate</option>
+            <option value="advanced">advanced</option>
+          </select>
+        </label>
+        <label>
+          类型
+          <select id="typeFilter">
+            <option value="all">全部类型</option>
+            <option value="coding">coding</option>
+            <option value="debugging">debugging</option>
+            <option value="algorithm">algorithm</option>
+          </select>
+        </label>
+        <label>
+          关键词
+          <input id="keywordInput" placeholder="比如：return、列表、字典">
+        </label>
+        <button class="primary" id="searchBtn" type="button">查看匹配题目</button>
+      </section>
+
+      <section class="panel">
+        <h3>生成小测</h3>
+        <label>
+          小测主题
+          <select id="quizTopic"><option value="auto">自动匹配当前进度</option></select>
+        </label>
+        <label>
+          小测难度
+          <select id="quizDifficulty">
+            <option value="auto">自动匹配当前水平</option>
+            <option value="beginner">beginner</option>
+            <option value="intermediate">intermediate</option>
+            <option value="advanced">advanced</option>
+          </select>
+        </label>
+        <label>
+          题目数量
+          <select id="quizCount">
+            <option value="3">3 题</option>
+            <option value="5" selected>5 题</option>
+            <option value="8">8 题</option>
+          </select>
+        </label>
+        <label>
+          需求描述
+          <textarea id="quizRequirement" placeholder="比如：多给我几道 return 和函数参数相关的题"></textarea>
+        </label>
+        <button class="secondary" id="generateQuizBtn" type="button">生成个性化小测</button>
+      </section>
+    </aside>
+
+    <main class="card main">
+      <section class="stats">
+        <div class="stat">
+          <div class="meta">题库总量</div>
+          <div class="stat-value" id="totalQuestions">0</div>
+        </div>
+        <div class="stat">
+          <div class="meta">推荐难度</div>
+          <div class="stat-value" id="recommendedDifficulty">-</div>
+        </div>
+        <div class="stat">
+          <div class="meta">当前水平</div>
+          <div class="stat-value" id="levelName">-</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>为你推荐</h2>
+        <div class="meta">系统会根据学习进度、完成度和得分，为你优先展示当前最适合的题。</div>
+        <div class="question-grid" id="recommendedList"></div>
+      </section>
+
+      <section class="panel">
+        <h2>题库列表</h2>
+        <div class="question-grid" id="questionList"></div>
+      </section>
+
+      <section class="panel">
+        <h2 id="quizTitle">个性化小测</h2>
+        <div class="meta" id="quizMeta">选择需求后生成小测。</div>
+        <div class="quiz-list" id="quizList"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const userMeta = document.getElementById("userMeta");
+    const topicFilter = document.getElementById("topicFilter");
+    const difficultyFilter = document.getElementById("difficultyFilter");
+    const typeFilter = document.getElementById("typeFilter");
+    const keywordInput = document.getElementById("keywordInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const quizTopic = document.getElementById("quizTopic");
+    const quizDifficulty = document.getElementById("quizDifficulty");
+    const quizCount = document.getElementById("quizCount");
+    const quizRequirement = document.getElementById("quizRequirement");
+    const generateQuizBtn = document.getElementById("generateQuizBtn");
+    const totalQuestions = document.getElementById("totalQuestions");
+    const recommendedDifficulty = document.getElementById("recommendedDifficulty");
+    const levelName = document.getElementById("levelName");
+    const recommendedList = document.getElementById("recommendedList");
+    const questionList = document.getElementById("questionList");
+    const quizTitle = document.getElementById("quizTitle");
+    const quizMeta = document.getElementById("quizMeta");
+    const quizList = document.getElementById("quizList");
+    const goLearnBtn = document.getElementById("goLearnBtn");
+    const goProfileBtn = document.getElementById("goProfileBtn");
+    const goChatBtn = document.getElementById("goChatBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "登录已过期");
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    };
+
+    const renderQuestionCard = (item, highlight = false) => `
+      <article class="question-card ${highlight ? "highlight" : ""}">
+        <div class="row-head">
+          <div>
+            <div class="question-title">${escapeHTML(item.title)}</div>
+            <div class="meta">${escapeHTML(item.topic_name)} · 预计 ${item.estimated_minutes} 分钟</div>
+          </div>
+          <span class="pill ${item.difficulty === "advanced" ? "warn" : ""}">${escapeHTML(item.difficulty)}</span>
+        </div>
+        <div class="meta">${escapeHTML(item.content)}</div>
+        ${item.recommend_reason ? `<div class="meta"><strong>推荐原因：</strong>${escapeHTML(item.recommend_reason)}</div>` : ""}
+        <div class="tag-list">${(item.tags || []).map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join("")}</div>
+        <details>
+          <summary>查看提示和参考答案</summary>
+          <div class="meta">${(item.hints || []).map(hint => `- ${escapeHTML(hint)}`).join("<br>")}</div>
+          <div class="code">${escapeHTML(item.answer)}</div>
+        </details>
+        <button class="primary" type="button" onclick="window.location.href='/questions/${escapeHTML(item.id)}'">进入做题</button>
+      </article>
+    `;
+
+    const populateTopics = (topics) => {
+      const options = topics.map(item => `<option value="${escapeHTML(item.value)}">${escapeHTML(item.label)}</option>`).join("");
+      topicFilter.innerHTML = `<option value="all">全部主题</option>${options}`;
+      quizTopic.innerHTML = `<option value="auto">自动匹配当前进度</option>${options}`;
+    };
+
+    const loadOverview = async () => {
+      const me = await authedFetch("/auth/me");
+      userMeta.textContent = `当前用户：${me.username}`;
+      const overview = await authedFetch("/question-bank/overview");
+      totalQuestions.textContent = overview.stats.total_questions;
+      recommendedDifficulty.textContent = overview.stats.recommended_difficulty;
+      levelName.textContent = overview.level.name;
+      populateTopics(overview.facets.topics || []);
+      recommendedList.innerHTML = (overview.recommended_questions || [])
+        .map(item => renderQuestionCard(item, true))
+        .join("") || '<div class="meta">暂无推荐题。</div>';
+    };
+
+    const loadQuestions = async () => {
+      const params = new URLSearchParams({
+        topic: topicFilter.value,
+        difficulty: difficultyFilter.value,
+        question_type: typeFilter.value,
+        keyword: keywordInput.value.trim()
+      });
+      const data = await authedFetch(`/question-bank/questions?${params.toString()}`);
+      questionList.innerHTML = (data.items || [])
+        .map(item => renderQuestionCard(item))
+        .join("") || '<div class="meta">没有找到匹配题目，可以放宽筛选条件。</div>';
+    };
+
+    const generateQuiz = async () => {
+      generateQuizBtn.disabled = true;
+      generateQuizBtn.textContent = "生成中...";
+      try {
+        const data = await authedFetch("/question-bank/quiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: quizTopic.value,
+            difficulty: quizDifficulty.value,
+            count: Number(quizCount.value),
+            requirement: quizRequirement.value
+          })
+        });
+        const quiz = data.quiz;
+        quizTitle.textContent = quiz.title;
+        quizMeta.textContent = `${quiz.reason} 预计 ${quiz.estimated_minutes} 分钟。`;
+        quizList.innerHTML = (quiz.questions || [])
+          .map((item, index) => `<div><div class="meta">第 ${index + 1} 题</div>${renderQuestionCard(item, true)}</div>`)
+          .join("") || '<div class="meta">暂时没有生成题目。</div>';
+      } catch (error) {
+        quizMeta.textContent = `生成失败：${error.message}`;
+      } finally {
+        generateQuizBtn.disabled = false;
+        generateQuizBtn.textContent = "生成个性化小测";
+      }
+    };
+
+    searchBtn.addEventListener("click", loadQuestions);
+    generateQuizBtn.addEventListener("click", generateQuiz);
+    goLearnBtn.addEventListener("click", () => { window.location.href = "/learn"; });
+    goProfileBtn.addEventListener("click", () => { window.location.href = "/profile"; });
+    goChatBtn.addEventListener("click", () => { window.location.href = "/chat"; });
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        await loadOverview();
+        await loadQuestions();
+      } catch (_) {
+        clearAuth();
+        window.location.href = "/";
+      }
+    };
+
+    bootstrap();
+  </script>
+</body>
+</html>

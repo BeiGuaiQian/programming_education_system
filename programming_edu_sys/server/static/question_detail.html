@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>题目详情 - 编程教育智能体系统</title>
+  <style>
+    :root {
+      --bg: #eef4f7;
+      --panel: #ffffff;
+      --line: #d7e1ea;
+      --ink: #17232f;
+      --muted: #667789;
+      --accent: #0f766e;
+      --accent-2: #2563eb;
+      --ok: #1f8f4c;
+      --bad: #c53030;
+      --code: #0f172a;
+      --soft: #f4f8fb;
+      --shadow: 0 18px 44px rgba(20, 36, 52, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.10), transparent 28%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .topbar {
+      height: 64px;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 13px;
+      padding: 10px 13px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      color: white;
+      background: linear-gradient(135deg, var(--accent), #13a092);
+    }
+
+    .secondary {
+      color: white;
+      background: linear-gradient(135deg, var(--accent-2), #3b82f6);
+    }
+
+    .ghost {
+      color: var(--ink);
+      background: #eef5fb;
+    }
+
+    .layout {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: minmax(360px, 0.95fr) minmax(460px, 1.05fr);
+      gap: 18px;
+      height: calc(100vh - 64px);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .pane-body {
+      padding: 20px;
+      overflow: auto;
+      height: 100%;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+    }
+
+    .title {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 850;
+      background: #edf7f6;
+      color: var(--accent);
+    }
+
+    .content {
+      line-height: 1.85;
+      white-space: pre-wrap;
+      color: #2f3f4f;
+    }
+
+    .example-box,
+    .hint-box,
+    .result-box {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--soft);
+      padding: 14px;
+      margin-top: 14px;
+    }
+
+    .editor-shell {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: #0b1220;
+    }
+
+    .editor-head,
+    .editor-actions {
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: linear-gradient(180deg, #111b2e, #0b1220);
+      color: #dbe7f5;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .editor-actions {
+      border-top: 1px solid rgba(148, 163, 184, 0.18);
+      border-bottom: 0;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border: 0;
+      outline: none;
+      resize: none;
+      padding: 16px;
+      background: var(--code);
+      color: #e5edf9;
+      font: 14px/1.65 Consolas, "Courier New", monospace;
+    }
+
+    .result-box.ok {
+      background: #ecfdf3;
+      color: var(--ok);
+      border-color: #b7ebc5;
+    }
+
+    .result-box.bad {
+      background: #fff5f5;
+      color: var(--bad);
+      border-color: #fed7d7;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+      word-break: break-word;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fbff;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        height: auto;
+        grid-template-columns: 1fr;
+      }
+      .panel {
+        min-height: 520px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">题库做题</div>
+    <nav class="nav">
+      <button class="ghost" id="backBtn" type="button">题库大全</button>
+      <button class="ghost" id="learnBtn" type="button">学习中心</button>
+      <button class="ghost" id="profileBtn" type="button">个人中心</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="pane-body">
+        <h1 class="title" id="questionTitle">正在加载题目...</h1>
+        <div class="meta" id="questionMeta"></div>
+        <div class="pill-row" id="tagList"></div>
+        <section>
+          <h2>题目描述</h2>
+          <div class="content" id="questionContent"></div>
+        </section>
+        <section class="example-box">
+          <h3>示例</h3>
+          <div id="exampleList" class="meta"></div>
+        </section>
+        <section class="hint-box">
+          <h3>提示</h3>
+          <div id="hintList" class="meta"></div>
+        </section>
+        <section class="result-box" id="resultBox">提交后，这里会显示判题结果。</section>
+        <div id="testTableWrap"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="editor-shell">
+        <div class="editor-head">
+          <strong>Python IDE</strong>
+          <span id="editorStatus">Ctrl/Cmd + Enter 提交</span>
+        </div>
+        <textarea id="codeEditor" spellcheck="false"></textarea>
+        <div class="editor-actions">
+          <div>
+            <button class="ghost" id="starterBtn" type="button">恢复模板</button>
+            <button class="ghost" id="lastBtn" type="button">恢复上次</button>
+            <button class="ghost" id="answerBtn" type="button">查看参考答案</button>
+          </div>
+          <button class="primary" id="submitBtn" type="button">提交判题</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const questionTitle = document.getElementById("questionTitle");
+    const questionMeta = document.getElementById("questionMeta");
+    const tagList = document.getElementById("tagList");
+    const questionContent = document.getElementById("questionContent");
+    const exampleList = document.getElementById("exampleList");
+    const hintList = document.getElementById("hintList");
+    const resultBox = document.getElementById("resultBox");
+    const testTableWrap = document.getElementById("testTableWrap");
+    const codeEditor = document.getElementById("codeEditor");
+    const editorStatus = document.getElementById("editorStatus");
+    const submitBtn = document.getElementById("submitBtn");
+    const starterBtn = document.getElementById("starterBtn");
+    const lastBtn = document.getElementById("lastBtn");
+    const answerBtn = document.getElementById("answerBtn");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+    let question = null;
+    let latestCode = "";
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const questionId = decodeURIComponent(window.location.pathname.split("/").filter(Boolean).pop());
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "登录已过期");
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    };
+
+    const updateEditorStatus = () => {
+      const lines = codeEditor.value.split("\n").length;
+      editorStatus.textContent = `${lines} 行 / ${codeEditor.value.length} 字符，Ctrl/Cmd + Enter 提交`;
+    };
+
+    const renderTests = (tests) => {
+      if (!tests || !tests.length) {
+        testTableWrap.innerHTML = "";
+        return;
+      }
+      testTableWrap.innerHTML = `
+        <table>
+          <thead><tr><th>调用</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+          <tbody>
+            ${tests.map(item => `
+              <tr>
+                <td>${escapeHTML(item.call)}</td>
+                <td>${escapeHTML(JSON.stringify(item.expected))}</td>
+                <td>${escapeHTML(JSON.stringify(item.actual))}</td>
+                <td>${item.passed ? "通过" : "未通过"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const renderResult = (payload) => {
+      resultBox.className = `result-box ${payload.passed ? "ok" : "bad"}`;
+      resultBox.textContent = `判题结果：${payload.passed ? "通过" : "未通过"}\n得分：${payload.score}\n\n${payload.feedback || ""}`;
+      renderTests((payload.test_result || {}).test_results || []);
+    };
+
+    const renderQuestion = (payload) => {
+      question = payload.question;
+      questionTitle.textContent = question.title;
+      questionMeta.textContent = `${question.topic_name} · ${question.difficulty} · ${question.type} · 预计 ${question.estimated_minutes} 分钟`;
+      tagList.innerHTML = (question.tags || []).map(tag => `<span class="pill">${escapeHTML(tag)}</span>`).join("");
+      questionContent.textContent = question.content;
+      exampleList.innerHTML = (question.examples || []).map(item => `输入：${escapeHTML(item.input)}<br>输出：${escapeHTML(item.output)}`).join("<hr>");
+      hintList.innerHTML = (question.hints || []).map(hint => `- ${escapeHTML(hint)}`).join("<br>");
+      latestCode = (payload.latest_submission && payload.latest_submission.code) || "";
+      codeEditor.value = latestCode || question.starter_code || "";
+      updateEditorStatus();
+      if (payload.latest_submission) {
+        renderResult({
+          passed: payload.latest_submission.passed,
+          score: payload.latest_submission.score,
+          feedback: payload.latest_submission.feedback,
+          test_result: payload.latest_submission.test_result
+        });
+      }
+    };
+
+    const submitCode = async () => {
+      if (!question) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "判题中...";
+      resultBox.className = "result-box";
+      resultBox.textContent = "正在运行隐藏测试，请稍候...";
+      testTableWrap.innerHTML = "";
+      try {
+        const payload = await authedFetch(`/question-bank/questions/${question.id}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: codeEditor.value })
+        });
+        latestCode = codeEditor.value;
+        renderResult(payload);
+      } catch (error) {
+        resultBox.className = "result-box bad";
+        resultBox.textContent = `提交失败：${error.message}`;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交判题";
+      }
+    };
+
+    codeEditor.addEventListener("input", updateEditorStatus);
+    codeEditor.addEventListener("keydown", (event) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const start = codeEditor.selectionStart;
+        const end = codeEditor.selectionEnd;
+        codeEditor.value = `${codeEditor.value.slice(0, start)}    ${codeEditor.value.slice(end)}`;
+        codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+        updateEditorStatus();
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        submitCode();
+      }
+    });
+
+    submitBtn.addEventListener("click", submitCode);
+    starterBtn.addEventListener("click", () => {
+      codeEditor.value = question ? question.starter_code || "" : "";
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+    lastBtn.addEventListener("click", () => {
+      codeEditor.value = latestCode || (question ? question.starter_code || "" : "");
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+    answerBtn.addEventListener("click", () => {
+      if (!question) return;
+      codeEditor.value = question.answer || "";
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+
+    document.getElementById("backBtn").addEventListener("click", () => { window.location.href = "/questions"; });
+    document.getElementById("learnBtn").addEventListener("click", () => { window.location.href = "/learn"; });
+    document.getElementById("profileBtn").addEventListener("click", () => { window.location.href = "/profile"; });
+
+    authedFetch(`/question-bank/questions/${questionId}`)
+      .then(renderQuestion)
+      .catch(() => {
+        clearAuth();
+        window.location.href = "/";
+      });
+  </script>
+</body>
+</html>

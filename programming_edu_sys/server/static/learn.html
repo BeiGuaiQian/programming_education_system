@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学习中心 - 编程教育智能体系统</title>
+  <style>
+    :root {
+      --bg: linear-gradient(180deg, #f7fbff, #edf3f8);
+      --panel: rgba(255, 255, 255, 0.95);
+      --line: #d7e1ea;
+      --ink: #17232f;
+      --muted: #677788;
+      --accent: #1565c0;
+      --accent-2: #0f766e;
+      --ok: #1f8f4c;
+      --bad: #c53030;
+      --soft: #f4f8fb;
+      --code: #0f172a;
+      --shadow: 0 20px 48px rgba(20, 36, 52, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(21, 101, 192, 0.10), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.08), transparent 28%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .layout {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(215, 225, 234, 0.95);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .sidebar {
+      padding: 20px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 16px;
+      min-height: calc(100vh - 40px);
+    }
+
+    .title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #2a7de1);
+      color: white;
+    }
+
+    .secondary {
+      background: linear-gradient(135deg, var(--accent-2), #139689);
+      color: white;
+    }
+
+    .ghost {
+      background: #eef5fb;
+      color: var(--ink);
+    }
+
+    .lesson-list {
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .lesson-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .lesson-item.active {
+      border-color: rgba(21, 101, 192, 0.45);
+      background: #edf5ff;
+    }
+
+    .lesson-name {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .lesson-summary {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .main {
+      min-height: calc(100vh - 40px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .main-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .main-title {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .badge {
+      background: #edf7f6;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+
+    .main-body {
+      overflow: auto;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      padding: 16px 18px;
+    }
+
+    .panel h3 {
+      margin: 0 0 12px;
+      font-size: 17px;
+    }
+
+    .source-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .selection-helper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      background:
+        linear-gradient(135deg, rgba(21, 101, 192, 0.08), rgba(15, 118, 110, 0.08)),
+        #ffffff;
+    }
+
+    .selection-helper strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.8;
+      color: #2f3f4f;
+    }
+
+    .knowledge-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .knowledge-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fbfdff;
+      padding: 14px 16px;
+    }
+
+    .knowledge-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .knowledge-card p {
+      margin: 0 0 10px;
+      color: #344657;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .code-example {
+      background: var(--code);
+      color: #e5edf9;
+      border-radius: 12px;
+      padding: 12px;
+      font: 13px/1.7 Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+
+    .exercise-box {
+      display: grid;
+      gap: 12px;
+    }
+
+    .exercise-meta {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .editor-shell {
+      border: 1px solid #0b1220;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #0b1220;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, #111b2e, #0b1220);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      flex-wrap: wrap;
+    }
+
+    .editor-toolbar-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(255, 255, 255, 0.04);
+      color: #dbe7f5;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mini-btn:hover {
+      transform: none;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .editor-status {
+      color: #93a7bf;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      border: 0;
+      border-radius: 0;
+      padding: 14px;
+      background: var(--code);
+      color: #e5edf9;
+      font: 14px/1.6 Consolas, "Courier New", monospace;
+      min-height: 280px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .result {
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: var(--soft);
+      color: var(--muted);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .result.ok {
+      background: #ecfdf3;
+      color: var(--ok);
+      border: 1px solid #b7ebc5;
+    }
+
+    .result.bad {
+      background: #fff5f5;
+      color: var(--bad);
+      border: 1px solid #fed7d7;
+    }
+
+    .feedback-panel {
+      display: grid;
+      gap: 12px;
+      color: var(--text);
+      white-space: normal;
+    }
+
+    .feedback-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .feedback-title {
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .score-pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .feedback-summary {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .feedback-card {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      padding: 12px;
+    }
+
+    .feedback-card h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .feedback-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .feedback-card li + li {
+      margin-top: 6px;
+    }
+
+    .feedback-location {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      background: #f8fbff;
+      color: #2f3f4f;
+    }
+
+    .selection-popover {
+      position: fixed;
+      z-index: 20;
+      display: none;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #10243d;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.28);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .selection-popover.show {
+      display: block;
+    }
+
+    .selection-popover button {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .selection-dock {
+      position: fixed;
+      right: 24px;
+      top: 24px;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 28px rgba(20, 36, 52, 0.12);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .selection-dock button {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #edf7f6;
+      color: var(--accent-2);
+      font-size: 12px;
+    }
+
+    .ask-panel {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 30;
+      width: min(420px, calc(100vw - 32px));
+      max-height: min(720px, calc(100vh - 48px));
+      display: none;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 58px rgba(20, 36, 52, 0.22);
+    }
+
+    .ask-panel.open {
+      display: grid;
+    }
+
+    .ask-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ask-head h3 {
+      margin: 0 0 4px;
+      font-size: 17px;
+    }
+
+    .ask-selected {
+      border-left: 4px solid var(--accent);
+      border-radius: 12px;
+      background: #f3f8ff;
+      padding: 10px 12px;
+      color: #2f3f4f;
+      font-size: 13px;
+      line-height: 1.7;
+      max-height: 120px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .ask-selected-input {
+      width: 100%;
+      min-height: 70px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #ffffff;
+      color: var(--ink);
+      font: 13px/1.7 Consolas, "Microsoft YaHei", sans-serif;
+      resize: vertical;
+      outline: none;
+    }
+
+    .ask-input {
+      width: 100%;
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fbfdff;
+      color: var(--ink);
+      font: inherit;
+      resize: vertical;
+      outline: none;
+    }
+
+    .ask-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ask-answer {
+      overflow: auto;
+      border-radius: 14px;
+      background: var(--soft);
+      padding: 12px;
+      color: #2f3f4f;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      min-height: 88px;
+    }
+
+    @media (max-width: 1000px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar,
+      .main {
+        min-height: auto;
+      }
+      .feedback-grid {
+        grid-template-columns: 1fr;
+      }
+      .ask-panel {
+        right: 16px;
+        bottom: 16px;
+      }
+      .selection-helper {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .selection-dock {
+        right: 16px;
+        top: auto;
+        bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="card sidebar">
+      <div>
+        <h1 class="title">学习中心</h1>
+        <div class="meta" id="userMeta">正在加载用户信息...</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="primary" id="goChatBtn" type="button">去对话页</button>
+        <button class="ghost" id="goQuestionsBtn" type="button">题库大全</button>
+        <button class="ghost" id="goProfileBtn" type="button">个人中心</button>
+        <button class="ghost" id="logoutBtn" type="button">退出</button>
+      </div>
+
+      <section class="lesson-list" id="lessonList"></section>
+
+      <div class="meta">教材来源优先使用权威官方文档。当前先落地一个 Python 知识点，后续可按同结构扩展。</div>
+    </aside>
+
+    <main class="card main">
+      <header class="main-head">
+        <div>
+          <h2 class="main-title" id="lessonTitle">正在加载知识点...</h2>
+          <div class="meta" id="lessonSubTitle"></div>
+        </div>
+        <div class="badge" id="lessonBadge">Python</div>
+      </header>
+
+      <section class="main-body">
+        <article class="panel">
+          <h3>教材来源</h3>
+          <div class="meta" id="lessonSource"></div>
+        </article>
+
+        <article class="panel selection-helper">
+          <div class="meta">
+            <strong>划词提问</strong>
+            功能已加载。选中知识点讲解、示例代码或题目要求中的一段文字，然后点击“问问智能体”。如果弹窗没出现，也可以点右上角固定按钮。
+            <div id="selectionDebugStatus">脚本状态：等待加载...</div>
+          </div>
+          <button class="primary" id="manualAskBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问选中的内容</button>
+        </article>
+
+        <article class="panel">
+          <h3>知识点讲解</h3>
+          <div class="meta" id="lessonSummary"></div>
+          <div class="knowledge-grid" id="knowledgePoints"></div>
+        </article>
+
+        <article class="panel exercise-box">
+          <h3 id="exerciseTitle">练习题</h3>
+          <div class="exercise-meta" id="exerciseDesc"></div>
+          <ul id="exerciseReq"></ul>
+          <div class="meta" id="exerciseExample"></div>
+
+          <h3>小型 IDE</h3>
+          <div class="editor-shell">
+            <div class="editor-toolbar">
+              <div class="editor-toolbar-group">
+                <button class="mini-btn" id="fillStarterBtn" type="button">填入模板</button>
+                <button class="mini-btn" id="restoreLastBtn" type="button">恢复上次提交</button>
+                <button class="mini-btn" id="clearEditorBtn" type="button">清空编辑器</button>
+              </div>
+              <div class="editor-status" id="editorStatus">Ctrl/Cmd + Enter 可快速提交</div>
+            </div>
+            <textarea id="codeEditor" spellcheck="false"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" id="submitBtn" type="button">提交判题</button>
+          </div>
+
+          <div class="result" id="resultBox">请先阅读知识点并完成代码，然后点击“提交判题”。</div>
+          <div id="testTableWrap"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="selection-popover" id="selectionPopover">
+    <button id="askSelectedBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问智能体</button>
+  </div>
+
+  <div class="selection-dock">
+    <span>选中文字后可提问</span>
+    <button id="dockAskBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">划词提问</button>
+  </div>
+
+  <section class="ask-panel" id="askPanel" aria-live="polite">
+    <div class="ask-head">
+      <div>
+        <h3>解释选中文本</h3>
+        <div class="meta">不用离开当前知识点，直接把疑问问清楚。</div>
+      </div>
+      <button class="mini-btn" id="closeAskPanelBtn" type="button">关闭</button>
+    </div>
+    <div class="ask-selected" id="askSelectedText"></div>
+    <textarea class="ask-selected-input" id="askSelectedInput" placeholder="如果自动选中文本没有带过来，可以直接把要解释的文字粘贴到这里。"></textarea>
+    <textarea class="ask-input" id="askQuestionInput" placeholder="可以补充你的问题，比如：这里的 return 和 print 有什么区别？"></textarea>
+    <div class="ask-actions">
+      <button class="secondary" id="sendSelectionQuestionBtn" type="button" onclick="window.askLearningSelection && window.askLearningSelection(true)">发送问题</button>
+      <button class="ghost" id="quickExplainBtn" type="button" onclick="window.askLearningSelection && window.askLearningSelection(false)">直接解释这段</button>
+    </div>
+    <div class="ask-answer" id="askAnswerBox">选中一段文字后，我会在这里解释它。</div>
+  </section>
+
+  <script>
+    const userMeta = document.getElementById("userMeta");
+    const lessonListEl = document.getElementById("lessonList");
+    const lessonTitleEl = document.getElementById("lessonTitle");
+    const lessonSubTitleEl = document.getElementById("lessonSubTitle");
+    const lessonBadgeEl = document.getElementById("lessonBadge");
+    const lessonSourceEl = document.getElementById("lessonSource");
+    const lessonSummaryEl = document.getElementById("lessonSummary");
+    const knowledgePointsEl = document.getElementById("knowledgePoints");
+    const exerciseTitleEl = document.getElementById("exerciseTitle");
+    const exerciseDescEl = document.getElementById("exerciseDesc");
+    const exerciseReqEl = document.getElementById("exerciseReq");
+    const exerciseExampleEl = document.getElementById("exerciseExample");
+    const codeEditor = document.getElementById("codeEditor");
+    const fillStarterBtn = document.getElementById("fillStarterBtn");
+    const restoreLastBtn = document.getElementById("restoreLastBtn");
+    const clearEditorBtn = document.getElementById("clearEditorBtn");
+    const editorStatus = document.getElementById("editorStatus");
+    const submitBtn = document.getElementById("submitBtn");
+    const resultBox = document.getElementById("resultBox");
+    const testTableWrap = document.getElementById("testTableWrap");
+    const goChatBtn = document.getElementById("goChatBtn");
+    const goQuestionsBtn = document.getElementById("goQuestionsBtn");
+    const goProfileBtn = document.getElementById("goProfileBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const manualAskBtn = document.getElementById("manualAskBtn");
+    const dockAskBtn = document.getElementById("dockAskBtn");
+    const selectionDebugStatus = document.getElementById("selectionDebugStatus");
+    const selectionPopover = document.getElementById("selectionPopover");
+    const askSelectedBtn = document.getElementById("askSelectedBtn");
+    const askPanel = document.getElementById("askPanel");
+    const closeAskPanelBtn = document.getElementById("closeAskPanelBtn");
+    const askSelectedText = document.getElementById("askSelectedText");
+    const askSelectedInput = document.getElementById("askSelectedInput");
+    const askQuestionInput = document.getElementById("askQuestionInput");
+    const sendSelectionQuestionBtn = document.getElementById("sendSelectionQuestionBtn");
+    const quickExplainBtn = document.getElementById("quickExplainBtn");
+    const askAnswerBox = document.getElementById("askAnswerBox");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+    let currentLessonId = null;
+    let currentLessonDetail = null;
+    let latestSubmissionCode = "";
+    let activeSelectedText = "";
+    let activeSelectionContext = "";
+
+    selectionDebugStatus.textContent = "脚本状态：划词提问脚本已加载";
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "登录已过期");
+      }
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "请求失败");
+      }
+      return data;
+    };
+
+    const updateEditorStatus = () => {
+      const lines = codeEditor.value.split("\n").length;
+      const chars = codeEditor.value.length;
+      editorStatus.textContent = `共 ${lines} 行 / ${chars} 字符，Ctrl/Cmd + Enter 可快速提交`;
+    };
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const renderList = (items, emptyText) => {
+      if (!items || !items.length) {
+        return `<ul><li>${escapeHTML(emptyText)}</li></ul>`;
+      }
+      return `<ul>${items.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`;
+    };
+
+    const renderFeedback = (payload, latest = null) => {
+      const structured = payload.structured_feedback;
+      const passed = Boolean(payload.passed);
+      const score = payload.score ?? 0;
+      resultBox.className = `result ${passed ? "ok" : "bad"}`;
+
+      if (!structured) {
+        const prefix = latest ? `上次提交：${latest.submitted_at}\n` : `判题结果：${passed ? "通过" : "未通过"}\n`;
+        resultBox.textContent = `${prefix}得分：${score}\n反馈：${payload.feedback || "暂无详细反馈"}`;
+        return;
+      }
+
+      const errorItems = (structured.error_locations || []).map(item => {
+        const position = item.line ? `第 ${item.line} 行${item.column ? ` / 第 ${item.column} 列` : ""}：` : "";
+        const suggestion = item.suggestion ? ` 建议：${item.suggestion}` : "";
+        return `${position}${item.message || ""}${suggestion}`;
+      });
+
+      resultBox.innerHTML = `
+        <div class="feedback-panel">
+          <div class="feedback-head">
+            <div class="feedback-title">${passed ? "这次通过了" : "这次还没通过，我们看一下哪里需要改"}</div>
+            <div class="score-pill">得分：${escapeHTML(score)}</div>
+          </div>
+          <div class="feedback-summary">${escapeHTML(structured.summary || payload.feedback || "")}</div>
+          <div class="feedback-grid">
+            <div class="feedback-card">
+              <h4>错误位置</h4>
+              ${renderList(errorItems, passed ? "没有发现阻塞错误。" : "暂时没有定位到具体行，请先看测试结果。")}
+            </div>
+            <div class="feedback-card">
+              <h4>需要修改的要点</h4>
+              ${renderList(structured.fix_points || [], "当前没有必须修改的点。")}
+            </div>
+            <div class="feedback-card">
+              <h4>代码风格提升建议</h4>
+              ${renderList(structured.style_suggestions || [], "保持现在的清晰写法就很好。")}
+            </div>
+            <div class="feedback-card">
+              <h4>已经做得不错的地方</h4>
+              ${renderList(structured.positive_notes || [], "完成提交本身就是一个好的开始。")}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const hideSelectionPopover = () => {
+      selectionPopover.classList.remove("show");
+    };
+
+    const clearActiveSelection = () => {
+      activeSelectedText = "";
+      activeSelectionContext = "";
+    };
+
+    const normalizeSelectionText = (text) => text.replace(/\s+/g, " ").trim();
+
+    const getSelectionContext = (selection) => {
+      const node = selection.anchorNode;
+      const element = node && (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
+      const container = element && element.closest(".panel, .knowledge-card, .code-example");
+      return normalizeSelectionText((container && container.textContent) || "");
+    };
+
+    const captureCurrentSelection = (options = {}) => {
+      const preserveExisting = Boolean(options.preserveExisting);
+      if (document.activeElement === codeEditor) {
+        const selectedCode = codeEditor.value
+          .slice(codeEditor.selectionStart, codeEditor.selectionEnd)
+          .trim();
+        if (selectedCode) {
+          activeSelectedText = selectedCode.slice(0, 1200);
+          activeSelectionContext = codeEditor.value.slice(0, 2500);
+          selectionDebugStatus.textContent = `脚本状态：已从 IDE 捕获 ${activeSelectedText.length} 个字符，可点击提问`;
+          return true;
+        }
+      }
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+
+      const selectedText = normalizeSelectionText(selection.toString());
+      if (!selectedText || selectedText.length < 2 || !document.querySelector(".main-body").contains(selection.anchorNode)) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+
+      const activeElement = document.activeElement;
+      if (activeElement && ["TEXTAREA", "INPUT"].includes(activeElement.tagName)) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+
+      activeSelectedText = selectedText.slice(0, 1200);
+      activeSelectionContext = getSelectionContext(selection).slice(0, 2500);
+      selectionDebugStatus.textContent = `脚本状态：已捕获 ${activeSelectedText.length} 个字符，可点击提问`;
+      return true;
+    };
+
+    const updateSelectionPopover = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        hideSelectionPopover();
+        clearActiveSelection();
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) {
+        hideSelectionPopover();
+        return;
+      }
+
+      if (!captureCurrentSelection()) {
+        hideSelectionPopover();
+        return;
+      }
+
+      selectionPopover.style.left = `${Math.min(window.innerWidth - 140, Math.max(12, rect.left + rect.width / 2 - 52))}px`;
+      selectionPopover.style.top = `${Math.max(12, rect.top - 46)}px`;
+      selectionPopover.classList.add("show");
+    };
+
+    const openAskPanel = () => {
+      captureCurrentSelection({ preserveExisting: true });
+      if (!activeSelectedText) {
+        askPanel.classList.add("open");
+        askSelectedText.textContent = "还没有选中文本。请先在知识点讲解、示例代码或题目要求里选中一小段内容。";
+        askSelectedInput.value = "";
+        askAnswerBox.textContent = "选中一段文字后，我就能结合当前知识点解释它。如果你已经选中了但这里仍然提示没有选中，请先点击页面空白处，再重新拖选一次。";
+        askQuestionInput.value = "";
+        return;
+      }
+      if (!activeSelectedText) return;
+      askSelectedText.textContent = activeSelectedText;
+      askSelectedInput.value = activeSelectedText;
+      askQuestionInput.value = "";
+      askAnswerBox.textContent = "可以直接发送，也可以补充一句你具体想问什么。";
+      askPanel.classList.add("open");
+      hideSelectionPopover();
+      askQuestionInput.focus();
+    };
+
+    const askSelection = async (useCustomQuestion) => {
+      const textToAsk = (askSelectedInput.value || activeSelectedText).trim();
+      if (!currentLessonId) {
+        askAnswerBox.textContent = "课程还没有加载完成，请稍等一下再试。";
+        return;
+      }
+      if (!textToAsk) {
+        askPanel.classList.add("open");
+        askAnswerBox.textContent = "请先选中一段文字，或者直接把要解释的文本填到上面的输入框里。";
+        askSelectedInput.focus();
+        return;
+      }
+      activeSelectedText = textToAsk.slice(0, 1200);
+      sendSelectionQuestionBtn.disabled = true;
+      quickExplainBtn.disabled = true;
+      sendSelectionQuestionBtn.textContent = "思考中...";
+      askAnswerBox.textContent = "智能体正在结合当前知识点解释这段内容，请稍等。";
+      try {
+        const requestedText = activeSelectedText;
+        const payload = await authedFetch("/learning/ask-selection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lesson_id: currentLessonId,
+            selected_text: requestedText,
+            question: useCustomQuestion ? askQuestionInput.value : "",
+            surrounding_context: activeSelectionContext || (currentLessonDetail ? currentLessonDetail.summary : "")
+          })
+        });
+        const sourceNote = payload.used_local_fallback
+          ? "\n\n提示：智能体已被调用，但当前大模型不可用，所以先使用本地学习规则给出解释。"
+          : "";
+        askSelectedText.textContent = payload.selected_text || requestedText;
+        askAnswerBox.textContent = `${payload.response || "智能体暂时没有返回解释，可以换个问法再试一次。"}${sourceNote}`;
+      } catch (error) {
+        askAnswerBox.textContent = `提问失败：${error.message}`;
+      } finally {
+        sendSelectionQuestionBtn.disabled = false;
+        quickExplainBtn.disabled = false;
+        sendSelectionQuestionBtn.textContent = "发送问题";
+      }
+    };
+
+    window.openLearningAskPanel = openAskPanel;
+    window.askLearningSelection = askSelection;
+
+    const renderLessons = (items) => {
+      lessonListEl.innerHTML = "";
+      for (const item of items) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `lesson-item${item.id === currentLessonId ? " active" : ""}`;
+        button.innerHTML = `
+          <div class="lesson-name">${escapeHTML(item.title)}</div>
+          <div class="lesson-summary">${escapeHTML(item.summary)}</div>
+        `;
+        button.addEventListener("click", () => loadLesson(item.id));
+        lessonListEl.appendChild(button);
+      }
+    };
+
+    const renderLessonDetail = (payload) => {
+      const lesson = payload.lesson;
+      const exercise = lesson.exercise;
+      currentLessonDetail = lesson;
+      currentLessonId = lesson.id;
+
+      lessonTitleEl.textContent = lesson.title;
+      lessonSubTitleEl.textContent = `难度：${lesson.difficulty} ｜ 主题：${lesson.topic}`;
+      lessonBadgeEl.textContent = lesson.language.toUpperCase();
+      lessonSummaryEl.textContent = lesson.summary;
+      lessonSourceEl.innerHTML = `
+        <div>${escapeHTML(lesson.source.title)}（${escapeHTML(lesson.source.authority)}）</div>
+        <a class="source-link" href="${escapeHTML(lesson.source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(lesson.source.url)}</a>
+      `;
+
+      knowledgePointsEl.innerHTML = "";
+      for (const kp of lesson.knowledge_points) {
+        const card = document.createElement("div");
+        card.className = "knowledge-card";
+        card.innerHTML = `
+          <h4>${escapeHTML(kp.title)}</h4>
+          <p>${escapeHTML(kp.explanation)}</p>
+          <div class="code-example">${escapeHTML(kp.example)}</div>
+        `;
+        knowledgePointsEl.appendChild(card);
+      }
+
+      exerciseTitleEl.textContent = `练习：${exercise.title}`;
+      exerciseDescEl.textContent = exercise.description;
+      exerciseReqEl.innerHTML = "";
+      for (const req of exercise.requirements) {
+        const li = document.createElement("li");
+        li.textContent = req;
+        exerciseReqEl.appendChild(li);
+      }
+      exerciseExampleEl.textContent = `示例：${exercise.examples.map(e => `${e.input} => ${e.output}`).join("；")}`;
+      latestSubmissionCode = (payload.latest_submission && payload.latest_submission.code) || "";
+      codeEditor.value = latestSubmissionCode || exercise.starter_code || "";
+      updateEditorStatus();
+
+      if (payload.latest_submission) {
+        const latest = payload.latest_submission;
+        renderFeedback({
+          passed: latest.passed,
+          score: latest.score,
+          feedback: latest.feedback,
+          structured_feedback: latest.structured_feedback || null
+        }, latest);
+      } else {
+        resultBox.className = "result";
+        resultBox.textContent = "请先阅读知识点并完成代码，然后点击“提交判题”。";
+      }
+      testTableWrap.innerHTML = "";
+    };
+
+    const renderTestTable = (testResults) => {
+      if (!testResults || !testResults.length) {
+        testTableWrap.innerHTML = "";
+        return;
+      }
+      const rows = testResults.map(item => `
+        <tr>
+          <td>${escapeHTML(item.call)}</td>
+          <td>${escapeHTML(item.expected)}</td>
+          <td>${escapeHTML(item.actual)}</td>
+          <td>${item.passed ? "通过" : "未通过"}</td>
+        </tr>
+      `).join("");
+      testTableWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>测试调用</th><th>期望</th><th>实际</th><th>结果</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    };
+
+    const loadLesson = async (lessonId) => {
+      const detail = await authedFetch(`/learning/lessons/${lessonId}`);
+      renderLessonDetail(detail);
+      const lessons = await authedFetch("/learning/lessons");
+      renderLessons(lessons.items || []);
+    };
+
+    const submitLesson = async () => {
+      if (!currentLessonId) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "判题中...";
+      resultBox.className = "result";
+      resultBox.textContent = "正在调用智能体判题，请稍候...";
+      testTableWrap.innerHTML = "";
+      try {
+        const payload = await authedFetch("/learning/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lesson_id: currentLessonId,
+            code: codeEditor.value
+          })
+        });
+        latestSubmissionCode = codeEditor.value;
+        renderFeedback(payload);
+        renderTestTable((payload.hidden_test_result || {}).test_results || []);
+      } catch (error) {
+        resultBox.className = "result bad";
+        resultBox.textContent = `提交失败：${error.message}`;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交判题";
+      }
+    };
+
+    codeEditor.addEventListener("input", updateEditorStatus);
+    codeEditor.addEventListener("keydown", (event) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const start = codeEditor.selectionStart;
+        const end = codeEditor.selectionEnd;
+        codeEditor.value = `${codeEditor.value.slice(0, start)}    ${codeEditor.value.slice(end)}`;
+        codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+        updateEditorStatus();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        submitLesson();
+      }
+    });
+
+    fillStarterBtn.addEventListener("click", () => {
+      if (!currentLessonDetail) return;
+      codeEditor.value = currentLessonDetail.exercise.starter_code || "";
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+
+    restoreLastBtn.addEventListener("click", () => {
+      codeEditor.value = latestSubmissionCode || (currentLessonDetail ? currentLessonDetail.exercise.starter_code : "");
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+
+    clearEditorBtn.addEventListener("click", () => {
+      codeEditor.value = "";
+      updateEditorStatus();
+      codeEditor.focus();
+    });
+
+    submitBtn.addEventListener("click", submitLesson);
+    document.addEventListener("selectionchange", () => {
+      window.clearTimeout(window.__learningSelectionTimer);
+      window.__learningSelectionTimer = window.setTimeout(updateSelectionPopover, 120);
+    });
+    document.addEventListener("mouseup", () => {
+      window.setTimeout(updateSelectionPopover, 20);
+    });
+    document.addEventListener("keyup", (event) => {
+      if (event.key.startsWith("Arrow") || event.key === "Shift") {
+        window.setTimeout(updateSelectionPopover, 20);
+      }
+    });
+    document.addEventListener("mousedown", (event) => {
+      if (!selectionPopover.contains(event.target) && !askPanel.contains(event.target)) {
+        hideSelectionPopover();
+      }
+    });
+    window.addEventListener("scroll", hideSelectionPopover, true);
+    [askSelectedBtn, manualAskBtn, dockAskBtn].forEach((button) => {
+      button.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        captureCurrentSelection({ preserveExisting: true });
+      });
+    });
+    askSelectedBtn.addEventListener("click", openAskPanel);
+    manualAskBtn.addEventListener("click", openAskPanel);
+    dockAskBtn.addEventListener("click", openAskPanel);
+    closeAskPanelBtn.addEventListener("click", () => {
+      askPanel.classList.remove("open");
+    });
+    sendSelectionQuestionBtn.addEventListener("click", () => askSelection(true));
+    quickExplainBtn.addEventListener("click", () => askSelection(false));
+    askQuestionInput.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        askSelection(true);
+      }
+    });
+    goChatBtn.addEventListener("click", () => { window.location.href = "/chat"; });
+    goQuestionsBtn.addEventListener("click", () => { window.location.href = "/questions"; });
+    goProfileBtn.addEventListener("click", () => { window.location.href = "/profile"; });
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        const me = await authedFetch("/auth/me");
+        userMeta.textContent = `当前用户：${me.username}`;
+        const lessons = await authedFetch("/learning/lessons");
+        const items = lessons.items || [];
+        renderLessons(items);
+        if (items.length) {
+          await loadLesson(items[0].id);
+        } else {
+          lessonTitleEl.textContent = "暂无课程";
+        }
+      } catch (_) {
+        clearAuth();
+        window.location.href = "/";
+      }
+    };
+
+    bootstrap();
+  </script>
+</body>
+</html>

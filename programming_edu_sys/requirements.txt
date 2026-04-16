@@ -2,6 +2,8 @@ langchain
 openai
 pydantic
 python-dotenv
+fastapi
+uvicorn
 pandas
 numpy
 matplotlib
