@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -13,6 +14,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from programming_education_system.agents.base_agent import BaseAgent
+from programming_education_system.config.llm_config import Config
 from programming_education_system.utils.llm_utils import llm_client
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,45 @@ logger = logging.getLogger(__name__)
 
 class AnswerEvaluationAgent(BaseAgent):
     """Evaluate user code and provide structured feedback."""
+
+    BLOCKED_IMPORTS = {
+        "ctypes",
+        "multiprocessing",
+        "os",
+        "pathlib",
+        "pickle",
+        "shutil",
+        "socket",
+        "subprocess",
+        "sys",
+        "tempfile",
+        "threading",
+    }
+    BLOCKED_CALLS = {
+        "__import__",
+        "breakpoint",
+        "compile",
+        "eval",
+        "exec",
+        "input",
+        "open",
+    }
+    BLOCKED_ATTRIBUTES = {
+        "chmod",
+        "connect",
+        "fork",
+        "kill",
+        "listen",
+        "popen",
+        "remove",
+        "rename",
+        "replace",
+        "rmdir",
+        "run",
+        "spawn",
+        "system",
+        "unlink",
+    }
 
     def __init__(self, personal_agent):
         super().__init__("AnswerEvaluationAgent")
@@ -30,9 +71,14 @@ class AnswerEvaluationAgent(BaseAgent):
     ) -> Dict[str, Any]:
         syntax = self._syntax_check(code)
         style = self._style_check(code)
-        run_result = await self._run_code(code, syntax_valid=syntax["valid"])
+        security = self._security_check(code, syntax)
+        run_result = await self._run_code(
+            code,
+            syntax_valid=syntax["valid"],
+            security=security,
+        )
         llm_feedback = await self._llm_feedback(code, question_context, syntax, style, run_result)
-        overall_score = self._calculate_score(syntax, style, run_result)
+        overall_score = self._calculate_score(syntax, style, security, run_result)
         return {
             "success": True,
             "overall_score": overall_score,
@@ -40,6 +86,7 @@ class AnswerEvaluationAgent(BaseAgent):
             "detailed_analysis": {
                 "syntax": syntax,
                 "style": style,
+                "security": security,
                 "execution": run_result,
             },
             "personalized": False,
@@ -120,9 +167,75 @@ class AnswerEvaluationAgent(BaseAgent):
         score = max(0, 100 - len(issues) * 5)
         return {"score": score, "issues": issues[:20], "line_count": len(lines)}
 
-    async def _run_code(self, code: str, syntax_valid: bool) -> Dict[str, Any]:
+    def _security_check(self, code: str, syntax: Dict[str, Any]) -> Dict[str, Any]:
+        issues: List[str] = []
+
+        if len(code) > Config.MAX_CODE_LENGTH:
+            issues.append(
+                f"Code exceeds the secure evaluation limit of {Config.MAX_CODE_LENGTH} characters."
+            )
+
+        if not syntax.get("valid", False):
+            return {
+                "safe_to_execute": False,
+                "issues": issues,
+                "execution_allowed": False,
+            }
+
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {
+                "safe_to_execute": False,
+                "issues": issues,
+                "execution_allowed": False,
+            }
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    module_name = alias.name.split(".", 1)[0]
+                    if module_name in self.BLOCKED_IMPORTS:
+                        issues.append(f"Blocked import detected: {module_name}")
+            elif isinstance(node, ast.ImportFrom):
+                module_name = (node.module or "").split(".", 1)[0]
+                if module_name in self.BLOCKED_IMPORTS:
+                    issues.append(f"Blocked import detected: {module_name}")
+            elif isinstance(node, ast.Call):
+                func_name = self._get_call_name(node.func)
+                if func_name in self.BLOCKED_CALLS:
+                    issues.append(f"Blocked function call detected: {func_name}")
+            elif isinstance(node, ast.Attribute):
+                if node.attr in self.BLOCKED_ATTRIBUTES:
+                    issues.append(f"Blocked attribute access detected: {node.attr}")
+
+        safe_to_execute = not issues
+        return {
+            "safe_to_execute": safe_to_execute,
+            "issues": issues[:20],
+            "execution_allowed": safe_to_execute and Config.ENABLE_UNTRUSTED_CODE_EXECUTION,
+        }
+
+    async def _run_code(
+        self,
+        code: str,
+        syntax_valid: bool,
+        security: Dict[str, Any],
+    ) -> Dict[str, Any]:
         if not syntax_valid:
             return {"skipped": True, "reason": "syntax_invalid"}
+        if not security.get("safe_to_execute", False):
+            return {
+                "skipped": True,
+                "reason": "security_blocked",
+                "security_issues": security.get("issues", []),
+            }
+        if not security.get("execution_allowed", False):
+            return {
+                "skipped": True,
+                "reason": "execution_disabled",
+                "message": "Runtime execution is disabled by default for safety.",
+            }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as handle:
             handle.write(code)
@@ -134,13 +247,19 @@ class AnswerEvaluationAgent(BaseAgent):
             def _run():
                 start = time.perf_counter()
                 try:
+                    safe_env = {
+                        "PYTHONIOENCODING": "utf-8",
+                        "PYTHONUTF8": "1",
+                    }
                     proc = subprocess.run(
-                        [sys.executable, temp_path],
+                        [sys.executable, "-I", temp_path],
                         capture_output=True,
                         text=True,
-                        timeout=10,
+                        timeout=Config.CODE_EXECUTION_TIMEOUT,
                         encoding="utf-8",
                         errors="replace",
+                        cwd=tempfile.gettempdir(),
+                        env=safe_env,
                     )
                     return {
                         "returncode": proc.returncode,
@@ -153,16 +272,16 @@ class AnswerEvaluationAgent(BaseAgent):
                     return {
                         "returncode": -1,
                         "stdout": "",
-                        "stderr": "Execution timed out after 10 seconds.",
-                        "duration_ms": 10000.0,
+                        "stderr": (
+                            f"Execution timed out after {Config.CODE_EXECUTION_TIMEOUT} seconds."
+                        ),
+                        "duration_ms": float(Config.CODE_EXECUTION_TIMEOUT * 1000),
                         "timed_out": True,
                     }
 
             return await loop.run_in_executor(None, _run)
         finally:
             try:
-                import os
-
                 os.unlink(temp_path)
             except OSError:
                 pass
@@ -193,11 +312,26 @@ Please provide:
         return await llm_client.generate_response(system_prompt, user_message, use_cache=False)
 
     @staticmethod
-    def _calculate_score(syntax: Dict[str, Any], style: Dict[str, Any], run_result: Dict[str, Any]) -> float:
+    def _get_call_name(func: ast.AST) -> str:
+        if isinstance(func, ast.Name):
+            return func.id
+        if isinstance(func, ast.Attribute):
+            return func.attr
+        return ""
+
+    @staticmethod
+    def _calculate_score(
+        syntax: Dict[str, Any],
+        style: Dict[str, Any],
+        security: Dict[str, Any],
+        run_result: Dict[str, Any],
+    ) -> float:
         score = 100.0
         if not syntax.get("valid", False):
             score -= 40
         score = min(score, float(style.get("score", 100)))
+        if security.get("issues"):
+            score -= min(30, len(security["issues"]) * 10)
         if run_result.get("timed_out"):
             score -= 20
         elif run_result.get("returncode", 0) != 0 and not run_result.get("skipped"):

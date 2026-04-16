@@ -35,7 +35,7 @@ class LLMClient:
         try:
             from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 
-            if not Config.DEEPSEEK_API_KEY:
+            if not Config.has_valid_api_key():
                 self.fallback_reason = "missing_api_key"
                 logger.info("LLM API key is not configured; using fallback responses.")
                 return

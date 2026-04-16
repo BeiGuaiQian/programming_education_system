@@ -36,20 +36,11 @@ def validate_user_input(content: str, user_id: str) -> Tuple[bool, str]:
 
 
 def sanitize_content(content: str) -> str:
-    """Remove control characters and escape basic HTML characters."""
+    """Remove unsafe control characters without mutating user code/text semantics."""
     if not content:
         return content
 
     sanitized = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", content)
-    html_escape_table = {
-        "&": "&amp;",
-        '"': "&quot;",
-        "'": "&#39;",
-        ">": "&gt;",
-        "<": "&lt;",
-    }
-    for char, escape in html_escape_table.items():
-        sanitized = sanitized.replace(char, escape)
     sanitized = re.sub(r"\n{4,}", "\n\n\n", sanitized)
     return sanitized.strip()
 
