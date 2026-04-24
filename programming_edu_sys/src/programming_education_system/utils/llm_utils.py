@@ -29,6 +29,10 @@ class LLMClient:
         self.model = Config.DEEPSEEK_MODEL
         self.openai_error_types = (Exception,)
         self.fallback_reason = "uninitialized"
+        self.failure_count = 0
+        self.circuit_open_until = 0.0
+        self.circuit_breaker_threshold = 3
+        self.circuit_breaker_seconds = 45
         self._initialize_client()
 
     def _initialize_client(self) -> None:
@@ -111,19 +115,33 @@ class LLMClient:
                 self._set_cached_response(cache_key, response)
             return response
 
+        if time.time() < self.circuit_open_until:
+            response = self._get_fallback_response(
+                system_prompt,
+                user_message,
+                "llm_circuit_open",
+            )
+            if cache_key:
+                self._set_cached_response(cache_key, response)
+            return response
+
         last_exception: Optional[Exception] = None
         for attempt in range(max_retries):
             try:
                 result = await self._request_completion(system_prompt, user_message)
+                self.failure_count = 0
+                self.circuit_open_until = 0.0
                 if cache_key:
                     self._set_cached_response(cache_key, result)
                 return result
             except self.openai_error_types as exc:
                 last_exception = exc
+                self._record_failure()
                 if attempt < max_retries - 1:
                     await asyncio.sleep(self._calculate_backoff(attempt))
             except Exception as exc:
                 last_exception = exc
+                self._record_failure()
                 break
 
         response = self._get_fallback_response(
@@ -149,7 +167,17 @@ class LLMClient:
         return content if isinstance(content, str) else str(content)
 
     def _calculate_backoff(self, attempt: int) -> float:
-        return min(10.0, (2**attempt) + random.uniform(0, 0.5))
+        return min(3.0, (2**attempt) + random.uniform(0, 0.3))
+
+    def _record_failure(self) -> None:
+        self.failure_count += 1
+        if self.failure_count >= self.circuit_breaker_threshold:
+            self.circuit_open_until = time.time() + self.circuit_breaker_seconds
+            logger.warning(
+                "LLM circuit breaker opened for %s seconds after %s failures.",
+                self.circuit_breaker_seconds,
+                self.failure_count,
+            )
 
     def _get_fallback_response(self, system_prompt: str, user_message: str, error_msg: str) -> str:
         message = user_message.lower()
@@ -175,6 +203,8 @@ class LLMClient:
             "ttl": self.cache_ttl,
             "initialized": self.initialized,
             "model": self.model,
+            "failure_count": self.failure_count,
+            "circuit_open": time.time() < self.circuit_open_until,
         }
 
     def set_cache_ttl(self, ttl: int) -> None:

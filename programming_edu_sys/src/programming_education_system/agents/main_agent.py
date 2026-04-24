@@ -43,7 +43,14 @@ class MainAgent(BaseAgent):
     async def enhance_request_with_context(self, request: Dict[str, Any]) -> Dict[str, Any]:
         original_content = request["content"]
         context = request.get("context", {})
-        if not context.get("recent_history") or len(original_content.strip()) > 50:
+        request_type = request.get("type", "auto")
+        already_processed = request.get("enhancement_info", {}).get("context_analysis", {}).get("skipped")
+        if (
+            already_processed
+            or request_type != "auto"
+            or not context.get("recent_history")
+            or len(original_content.strip()) > 50
+        ):
             return {
                 **request,
                 "enhancement_info": {
@@ -99,6 +106,10 @@ class MainAgent(BaseAgent):
         }
 
     async def analyze_intent_with_context(self, content: str, context: Dict[str, Any]) -> str:
+        fast_intent = self._fast_intent_analysis(content)
+        if fast_intent:
+            return fast_intent
+
         system_prompt = (
             "You are an intent analysis assistant. Return JSON only, in the form "
             '{"intent": "qa|exercise|evaluation|personal", "confidence": 0.0, "reason": "..."}'
@@ -151,8 +162,28 @@ class MainAgent(BaseAgent):
             )
         return result
 
+    async def _sync_external_profile(self, request: Dict[str, Any]) -> None:
+        external_context = request.get("context", {}).get("external_learning_context", {})
+        profile = external_context.get("profile") or {}
+        level = external_context.get("level") or {}
+        if not profile and not level:
+            return
+        await self.personal_agent.update_user_profile(
+            request["user_id"],
+            {
+                "learning_style": profile.get("learning_style") or "balanced",
+                "learning_goals": [profile.get("learning_goal")]
+                if profile.get("learning_goal")
+                else [],
+                "programming_level": level.get("name") or "beginner",
+                "content": request.get("content", ""),
+                "topic": "python_basics",
+            },
+        )
+
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
         enhanced_request = await self.enhance_request_with_context(request)
+        await self._sync_external_profile(enhanced_request)
         intent = await self.analyze_intent(enhanced_request)
         result = await self.dispatch_to_sub_agent(intent, enhanced_request)
         behavior_data = {
@@ -162,6 +193,9 @@ class MainAgent(BaseAgent):
             "original_content": enhanced_request.get("original_content", enhanced_request["content"]),
             "was_enhanced": enhanced_request.get("enhancement_info", {}).get("was_enhanced", False),
             "context_used": enhanced_request.get("enhancement_info", {}).get("context_used", False),
+            "external_learning_context": enhanced_request.get("context", {}).get(
+                "external_learning_context", {}
+            ),
             "timestamp": enhanced_request.get("timestamp", "unknown"),
         }
         await self.personal_agent.track_user_behavior(behavior_data)
@@ -182,6 +216,19 @@ class MainAgent(BaseAgent):
             if f'"intent": "{intent}"' in response_lower or f"'intent': '{intent}'" in response_lower:
                 return {"intent": intent, "confidence": 0.7, "reason": "extracted_from_text"}
         return {}
+
+    def _fast_intent_analysis(self, content: str) -> str | None:
+        content_lower = content.lower()
+        has_code = "def " in content or "import " in content or ("=" in content and ":" in content)
+        if has_code and any(token in content_lower for token in ["检查", "评价", "review", "报错", "错误", "为什么"]):
+            return "evaluation"
+        if any(token in content_lower for token in ["生成练习", "出一道题", "给我一道题", "quiz", "exercise"]):
+            return "exercise"
+        if any(token in content_lower for token in ["学习路径", "学习计划", "推荐", "规划", "我该学什么"]):
+            return "personal"
+        if any(token in content_lower for token in ["是什么", "为什么", "怎么", "解释", "区别", "what is", "how to"]):
+            return "qa"
+        return None
 
     async def _fallback_intent_analysis(self, content: str) -> str:
         content_lower = content.lower()

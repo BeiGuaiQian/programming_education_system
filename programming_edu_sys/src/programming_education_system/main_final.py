@@ -66,9 +66,20 @@ class ProgrammingEducationSystem:
                 "recent_history": [],
                 "learning_goals": [],
                 "preferred_difficulty": "medium",
+                "external_learning_context": {},
                 "last_interaction_time": asyncio.get_event_loop().time(),
             }
         return self.user_contexts[user_id]
+
+    def update_external_learning_context(self, user_id: str, external_context: Dict[str, Any] | None) -> None:
+        if not external_context:
+            return
+        context = self._get_user_context(user_id)
+        context["external_learning_context"] = external_context
+        profile = external_context.get("profile", {})
+        learning_goal = profile.get("learning_goal")
+        if learning_goal:
+            context["learning_goals"] = [learning_goal]
 
     def _update_user_context(self, user_id: str, user_input: str, agent_response: str) -> None:
         context = self._get_user_context(user_id)
@@ -83,17 +94,23 @@ class ProgrammingEducationSystem:
         context["last_interaction_time"] = asyncio.get_event_loop().time()
 
     async def process_user_request(
-        self, request_type: str, content: str, user_id: str = "user_001"
+        self,
+        request_type: str,
+        content: str,
+        user_id: str = "user_001",
+        external_context: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         self.logger.info("处理用户请求 - 类型: %s, 用户: %s", request_type, user_id)
         try:
             start_time = asyncio.get_event_loop().time()
-            _ = self._get_user_context(user_id)
+            context = self._get_user_context(user_id)
+            self.update_external_learning_context(user_id, external_context)
 
             result = await self.user_agent.receive_user_request(
                 request_type="auto" if request_type == "auto" else request_type,
                 content=content,
                 user_id=user_id,
+                context=context,
             )
             final_result = await self.user_agent.collect_and_return_results(result)
             processing_time = asyncio.get_event_loop().time() - start_time
@@ -155,6 +172,9 @@ class ProgrammingEducationSystem:
                     "context_used": result.get("context_used", False),
                     "enhancement_applied": result.get("enhancement_applied", False),
                     "processing_info": result.get("processing_info", {}),
+                    "external_learning_context": self._get_user_context(user_id).get(
+                        "external_learning_context", {}
+                    ),
                 },
             }
             analysis_result = await self.cognition_api.analyze_learning_interaction(user_id, interaction_data)
@@ -173,16 +193,20 @@ class ProgrammingEducationSystem:
         try:
             cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
             learning_context = self._map_learning_context(request_type, original_content)
-            learning_params = await self.cognition_api.get_personalized_learning_parameters(
-                user_id,
-                learning_context,
+            external_learning_context = self._get_user_context(user_id).get(
+                "external_learning_context", {}
             )
-            progression_analysis = await self.cognition_api.get_learning_progression_analysis(user_id)
-            strengths_weaknesses = await self.cognition_api.get_cognitive_strengths_weaknesses(user_id)
             learning_goal = self._infer_learning_goal(original_content, request_type)
-            learning_recommendations = await self.cognition_api.get_learning_recommendations(
-                user_id,
-                learning_goal,
+            (
+                learning_params,
+                progression_analysis,
+                strengths_weaknesses,
+                learning_recommendations,
+            ) = await asyncio.gather(
+                self.cognition_api.get_personalized_learning_parameters(user_id, learning_context),
+                self.cognition_api.get_learning_progression_analysis(user_id),
+                self.cognition_api.get_cognitive_strengths_weaknesses(user_id),
+                self.cognition_api.get_learning_recommendations(user_id, learning_goal),
             )
 
             result.setdefault("cognitive_insights", {})
@@ -193,6 +217,7 @@ class ProgrammingEducationSystem:
                     "progression_analysis": progression_analysis,
                     "strengths_weaknesses": strengths_weaknesses,
                     "learning_recommendations": learning_recommendations,
+                    "external_learning_context": external_learning_context,
                     "scientific_analysis_timestamp": cognitive_state.get("last_updated", ""),
                 }
             )
@@ -202,6 +227,7 @@ class ProgrammingEducationSystem:
                 result.get("response", ""),
                 params,
                 cognitive_state,
+                external_learning_context,
             )
             self.logger.info(
                 "科学认知增强完成 - 用户: %s, 认知水平: %.3f",
@@ -247,14 +273,25 @@ class ProgrammingEducationSystem:
         original_response: str,
         params: Dict[str, Any],
         cognitive_state: Dict[str, Any],
+        external_learning_context: Dict[str, Any] | None = None,
     ) -> str:
         guided_response = original_response
+        external_learning_context = external_learning_context or {}
+        profile = external_learning_context.get("profile", {})
+        pace = profile.get("preferred_pace")
+        style = profile.get("learning_style")
         explanation_depth = float(params.get("explanation_depth", 0.7))
-        if explanation_depth < 0.4 and len(guided_response) > 300:
+        if (explanation_depth < 0.4 or pace == "fast") and len(guided_response) > 300:
             sentences = [segment.strip() for segment in guided_response.split("。") if segment.strip()]
             guided_response = "。".join(sentences[:3]) + ("。" if sentences else "")
 
         hint_strategy = params.get("hint_strategy", "balanced")
+        if style == "practice_first":
+            guided_response += "\n\n按你的学习偏好，我建议你先动手改一小段代码，再把结果发给我检查。"
+        elif style == "example_first":
+            guided_response += "\n\n按你的学习偏好，如果这里还抽象，可以让我再给你一个更小的例子。"
+        elif style == "debug_first":
+            guided_response += "\n\n按你的学习偏好，我们也可以从报错或失败用例反推问题。"
         if hint_strategy == "guided":
             guided_response += "\n\n提示：如果你希望我把这一步拆得更细，我可以继续展开。"
         elif hint_strategy == "balanced":

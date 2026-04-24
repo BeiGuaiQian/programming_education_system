@@ -148,7 +148,8 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -166,8 +167,14 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
+    }
+
+    .wide-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 16px;
     }
 
     .panel {
@@ -231,7 +238,12 @@
 
     .progress-list,
     .recommend-list,
-    .recent-list {
+    .recent-list,
+    .ability-list,
+    .chapter-list,
+    .path-list,
+    .question-list,
+    .insight-list {
       display: grid;
       gap: 10px;
     }
@@ -294,6 +306,72 @@
       width: var(--width, 0%);
     }
 
+    .ability-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 13px;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.05), rgba(37, 99, 235, 0.05)),
+        #fff;
+      display: grid;
+      gap: 9px;
+    }
+
+    .ability-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ability-score {
+      font-size: 22px;
+      font-weight: 950;
+      color: var(--accent);
+    }
+
+    .chapter-row {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: #fbfefd;
+      display: grid;
+      gap: 9px;
+    }
+
+    .chapter-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .path-card,
+    .question-card,
+    .insight-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: #ffffff;
+      display: grid;
+      gap: 8px;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #eef7f6;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 850;
+      text-decoration: none;
+    }
+
     .message {
       min-height: 24px;
       color: var(--muted);
@@ -309,6 +387,9 @@
         min-height: auto;
       }
       .grid {
+        grid-template-columns: 1fr;
+      }
+      .wide-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -336,6 +417,29 @@
         <label>
           个人简介
           <textarea id="bioInput" maxlength="160" placeholder="比如：正在学习 Python 基础"></textarea>
+        </label>
+        <label>
+          学习目标
+          <input id="learningGoalInput" maxlength="120" placeholder="比如：两个月内能独立完成课程作业">
+        </label>
+        <label>
+          学习方式
+          <select id="learningStyleInput">
+            <option value="">暂不设置</option>
+            <option value="concept_first">先讲概念，再看例子</option>
+            <option value="example_first">先看例子，再反推概念</option>
+            <option value="practice_first">边做边学</option>
+            <option value="debug_first">通过纠错来学习</option>
+          </select>
+        </label>
+        <label>
+          学习节奏
+          <select id="preferredPaceInput">
+            <option value="">暂不设置</option>
+            <option value="slow">慢一点，拆细步骤</option>
+            <option value="normal">正常节奏</option>
+            <option value="fast">快节奏，直接抓重点</option>
+          </select>
         </label>
         <button class="primary" type="submit">保存资料</button>
         <div class="message" id="profileMessage"></div>
@@ -371,8 +475,48 @@
           <div class="stat-value" id="attemptStat">0</div>
         </div>
         <div class="panel stat">
+          <div class="meta">题库提交</div>
+          <div class="stat-value" id="questionAttemptStat">0</div>
+        </div>
+        <div class="panel stat">
           <div class="meta">平均最好得分</div>
           <div class="stat-value" id="scoreStat">0</div>
+        </div>
+        <div class="panel stat">
+          <div class="meta">学习停留</div>
+          <div class="stat-value" id="studyTimeStat">0 分钟</div>
+        </div>
+      </section>
+
+      <section class="wide-grid">
+        <div class="panel">
+          <h2>能力画像</h2>
+          <div class="meta">综合学习中心进度、题库得分、停留行为和卡点数据，估计当前能力分布。</div>
+          <div class="ability-list" id="abilityList"></div>
+        </div>
+        <div class="panel">
+          <h2>行为洞察</h2>
+          <div class="meta">这里会把学习目标、学习方式、停留卡点等数据转成可读提示。</div>
+          <div class="insight-list" id="insightList"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>学习中心进度</h2>
+        <div class="meta">按学习中心章节树统计，包含已填充课程和后续规划小节。</div>
+        <div class="chapter-list" id="chapterList"></div>
+      </section>
+
+      <section class="wide-grid">
+        <div class="panel">
+          <h2>推荐学习路径</h2>
+          <div class="meta">优先考虑你未完成的学习中心小节、停留较久的卡点和当前可学习内容。</div>
+          <div class="path-list" id="pathList"></div>
+        </div>
+        <div class="panel">
+          <h2>推荐题目</h2>
+          <div class="meta">结合当前水平、题库提交记录、卡点和知识点优先级推荐。</div>
+          <div class="question-list" id="questionList"></div>
         </div>
       </section>
 
@@ -401,6 +545,9 @@
     const nicknameInput = document.getElementById("nicknameInput");
     const avatarInput = document.getElementById("avatarInput");
     const bioInput = document.getElementById("bioInput");
+    const learningGoalInput = document.getElementById("learningGoalInput");
+    const learningStyleInput = document.getElementById("learningStyleInput");
+    const preferredPaceInput = document.getElementById("preferredPaceInput");
     const profileMessage = document.getElementById("profileMessage");
     const goLearnBtn = document.getElementById("goLearnBtn");
     const goQuestionsBtn = document.getElementById("goQuestionsBtn");
@@ -411,7 +558,14 @@
     const levelScore = document.getElementById("levelScore");
     const completedStat = document.getElementById("completedStat");
     const attemptStat = document.getElementById("attemptStat");
+    const questionAttemptStat = document.getElementById("questionAttemptStat");
     const scoreStat = document.getElementById("scoreStat");
+    const studyTimeStat = document.getElementById("studyTimeStat");
+    const abilityList = document.getElementById("abilityList");
+    const insightList = document.getElementById("insightList");
+    const chapterList = document.getElementById("chapterList");
+    const pathList = document.getElementById("pathList");
+    const questionList = document.getElementById("questionList");
     const recommendList = document.getElementById("recommendList");
     const progressList = document.getElementById("progressList");
     const recentList = document.getElementById("recentList");
@@ -494,11 +648,96 @@
       }
     };
 
+    const clampScore = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+
+    const renderAbilityProfile = (items) => {
+      abilityList.innerHTML = (items || []).map(item => {
+        const score = clampScore(item.score);
+        const pillClass = score >= 70 ? "ok" : score >= 35 ? "warn" : "";
+        return `
+          <div class="ability-card">
+            <div class="ability-head">
+              <div class="row-title">${escapeHTML(item.name)}</div>
+              <div class="ability-score">${score}</div>
+            </div>
+            <div class="bar"><span style="--width: ${score}%"></span></div>
+            <div class="row-head">
+              <span class="pill ${pillClass}">${escapeHTML(item.level)}</span>
+              <span class="meta">章节 ${item.chapter_score} / 题库 ${item.question_score}</span>
+            </div>
+            <div class="meta">${escapeHTML(item.description)}</div>
+          </div>
+        `;
+      }).join("") || '<div class="meta">能力画像还在积累数据。</div>';
+    };
+
+    const renderInsights = (items) => {
+      insightList.innerHTML = (items || []).map(item => `
+        <div class="insight-card">
+          <div class="row-title">${escapeHTML(item.title)}</div>
+          <div class="meta">${escapeHTML(item.content)}</div>
+        </div>
+      `).join("") || '<div class="meta">暂无行为洞察。</div>';
+    };
+
+    const renderCurriculumProgress = (curriculum) => {
+      const chapters = (curriculum && curriculum.chapters) || [];
+      chapterList.innerHTML = chapters.map(chapter => {
+        const score = clampScore(chapter.score);
+        return `
+          <div class="chapter-row">
+            <div class="row-head">
+              <div class="row-title">${escapeHTML(chapter.title)}</div>
+              <span class="pill">${chapter.completed_sections}/${chapter.total_sections}</span>
+            </div>
+            <div class="bar"><span style="--width: ${chapter.completion_rate}%"></span></div>
+            <div class="chapter-meta">
+              <span>完成 ${chapter.completion_rate}%</span>
+              <span>已开始 ${chapter.started_sections} 节</span>
+              <span>能力估计 ${score}</span>
+            </div>
+            <div class="meta">${escapeHTML(chapter.description)}</div>
+          </div>
+        `;
+      }).join("") || '<div class="meta">暂无学习中心进度。</div>';
+    };
+
+    const renderLearningPath = (items) => {
+      pathList.innerHTML = (items || []).map(item => `
+        <div class="path-card">
+          <div class="row-head">
+            <div class="row-title">${escapeHTML(item.title)}</div>
+            <span class="pill ${item.priority <= 1 ? "warn" : ""}">${escapeHTML(item.status_label)}</span>
+          </div>
+          <div class="meta">${escapeHTML(item.chapter_title)} · 预计 ${escapeHTML(item.estimated_minutes)} 分钟</div>
+          <div class="meta">${escapeHTML(item.reason)}</div>
+          <a class="link-btn" href="${item.lesson_id ? "/learn" : "/learn"}">${escapeHTML(item.action)}</a>
+        </div>
+      `).join("") || '<div class="meta">暂无推荐路径。</div>';
+    };
+
+    const renderQuestionRecommendations = (items) => {
+      questionList.innerHTML = (items || []).map(item => `
+        <div class="question-card">
+          <div class="row-head">
+            <div class="row-title">${escapeHTML(item.title)}</div>
+            <span class="pill ${item.passed ? "ok" : item.attempts ? "warn" : ""}">${item.passed ? "已通过" : item.attempts ? "待突破" : "新题"}</span>
+          </div>
+          <div class="meta">${escapeHTML(item.topic_name)} · ${escapeHTML(item.difficulty)} · 最好得分 ${escapeHTML(item.best_score || 0)}</div>
+          <div class="meta">${escapeHTML(item.recommend_reason)}</div>
+          <a class="link-btn" href="${escapeHTML(item.url)}">进入做题</a>
+        </div>
+      `).join("") || '<div class="meta">暂无推荐题目。</div>';
+    };
+
     const renderOverview = (data) => {
       const profile = data.profile || {};
       nicknameInput.value = profile.nickname || profile.username || "";
       avatarInput.value = profile.avatar_url || "";
       bioInput.value = profile.bio || "";
+      learningGoalInput.value = profile.learning_goal || "";
+      learningStyleInput.value = profile.learning_style || "";
+      preferredPaceInput.value = profile.preferred_pace || "";
       userMeta.textContent = `账号：${profile.username || ""}`;
       renderAvatar(profile);
 
@@ -509,7 +748,15 @@
 
       completedStat.textContent = `${data.stats.completed_lessons}/${data.stats.total_lessons}`;
       attemptStat.textContent = data.stats.total_attempts;
+      questionAttemptStat.textContent = data.stats.question_attempts || 0;
       scoreStat.textContent = data.stats.average_best_score;
+      studyTimeStat.textContent = `${data.stats.total_study_minutes || 0} 分钟`;
+
+      renderAbilityProfile(data.skill_profile || []);
+      renderInsights(data.behavior_insights || []);
+      renderCurriculumProgress(data.curriculum || {});
+      renderLearningPath(data.learning_path || []);
+      renderQuestionRecommendations(data.recommended_questions || []);
 
       recommendList.innerHTML = (data.recommendations || []).map(item => `
         <div class="row">
@@ -564,6 +811,15 @@
             nickname: nicknameInput.value,
             avatar_url: avatarInput.value,
             bio: bioInput.value
+          })
+        });
+        await authedFetch("/profile/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            learning_goal: learningGoalInput.value,
+            learning_style: learningStyleInput.value,
+            preferred_pace: preferredPaceInput.value
           })
         });
         profileMessage.textContent = "资料已保存。";

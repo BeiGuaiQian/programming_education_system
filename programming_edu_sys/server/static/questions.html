@@ -55,6 +55,10 @@
       gap: 16px;
       align-content: start;
       min-height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      overflow: auto;
+      position: sticky;
+      top: 22px;
     }
 
     .main {
@@ -147,7 +151,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -178,6 +182,135 @@
       background: #fbfdff;
       display: grid;
       gap: 10px;
+    }
+
+    .knowledge-group-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .chapter-nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chapter-nav button {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfdff;
+      text-align: left;
+      padding: 10px 12px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .chapter-nav button.active {
+      border-color: rgba(15, 118, 110, 0.48);
+      background: #f0fdfa;
+      color: var(--accent);
+    }
+
+    .knowledge-group {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 16px;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.04), rgba(15, 118, 110, 0.04)),
+        #fff;
+      display: grid;
+      gap: 14px;
+    }
+
+    .group-head {
+      display: grid;
+      gap: 8px;
+    }
+
+    .group-title-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .group-title {
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .group-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 9px;
+      border-radius: 999px;
+      background: #e8f0f3;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: var(--width, 0%);
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .question-row-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .section-question-block {
+      border: 1px solid #e1eaf1;
+      border-radius: 18px;
+      padding: 12px;
+      background: rgba(248, 251, 253, 0.9);
+      display: grid;
+      gap: 10px;
+    }
+
+    details.section-question-block > summary {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    details.section-question-block > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .section-body {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .section-question-block.empty {
+      border-style: dashed;
+      background: #fbfdff;
+    }
+
+    .section-title-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .section-title {
+      font-weight: 900;
+    }
+
+    .compact-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .question-card.highlight {
@@ -213,6 +346,16 @@
       color: var(--warn);
     }
 
+    .pill.ok {
+      background: #ecfdf3;
+      color: #15803d;
+    }
+
+    .pill.muted {
+      background: #eef2f7;
+      color: var(--muted);
+    }
+
     .tag-list {
       display: flex;
       gap: 6px;
@@ -242,6 +385,10 @@
       gap: 12px;
     }
 
+    .hidden {
+      display: none;
+    }
+
     @media (max-width: 1040px) {
       .layout {
         grid-template-columns: 1fr;
@@ -249,8 +396,11 @@
       .sidebar,
       .main {
         min-height: auto;
+        max-height: none;
+        position: static;
       }
       .question-grid,
+      .question-row-grid,
       .stats {
         grid-template-columns: 1fr;
       }
@@ -304,6 +454,12 @@
       </section>
 
       <section class="panel">
+        <h3>章节目录</h3>
+        <div class="meta">先选章节，再看对应知识点和题目，不用一路滚到底。</div>
+        <div class="chapter-nav" id="chapterNav"></div>
+      </section>
+
+      <section class="panel">
         <h3>生成小测</h3>
         <label>
           小测主题
@@ -341,6 +497,10 @@
           <div class="stat-value" id="totalQuestions">0</div>
         </div>
         <div class="stat">
+          <div class="meta">已完成题目</div>
+          <div class="stat-value" id="completedQuestions">0</div>
+        </div>
+        <div class="stat">
           <div class="meta">推荐难度</div>
           <div class="stat-value" id="recommendedDifficulty">-</div>
         </div>
@@ -357,8 +517,9 @@
       </section>
 
       <section class="panel">
-        <h2>题库列表</h2>
-        <div class="question-grid" id="questionList"></div>
+        <h2>按知识点练习</h2>
+        <div class="meta">每个知识点下方展示对应题目、完成状态、最好得分和累计用时。这里先看编排效果，后续可以继续扩题。</div>
+        <div class="knowledge-group-list" id="knowledgeGroupList"></div>
       </section>
 
       <section class="panel">
@@ -382,10 +543,12 @@
     const quizRequirement = document.getElementById("quizRequirement");
     const generateQuizBtn = document.getElementById("generateQuizBtn");
     const totalQuestions = document.getElementById("totalQuestions");
+    const completedQuestions = document.getElementById("completedQuestions");
     const recommendedDifficulty = document.getElementById("recommendedDifficulty");
     const levelName = document.getElementById("levelName");
     const recommendedList = document.getElementById("recommendedList");
-    const questionList = document.getElementById("questionList");
+    const knowledgeGroupList = document.getElementById("knowledgeGroupList");
+    const chapterNav = document.getElementById("chapterNav");
     const quizTitle = document.getElementById("quizTitle");
     const quizMeta = document.getElementById("quizMeta");
     const quizList = document.getElementById("quizList");
@@ -396,6 +559,8 @@
 
     let accessToken = localStorage.getItem("pes_token");
     let refreshToken = localStorage.getItem("pes_refresh_token");
+    let currentQuestionGroups = [];
+    let activeGroupId = "";
 
     if (!accessToken || !refreshToken) {
       window.location.href = "/";
@@ -453,6 +618,12 @@
       return data;
     };
 
+    const statusPillClass = (item) => {
+      if (item.status === "completed" || item.passed) return "ok";
+      if (item.status === "attempted" || item.attempts) return "warn";
+      return "muted";
+    };
+
     const renderQuestionCard = (item, highlight = false) => `
       <article class="question-card ${highlight ? "highlight" : ""}">
         <div class="row-head">
@@ -460,9 +631,15 @@
             <div class="question-title">${escapeHTML(item.title)}</div>
             <div class="meta">${escapeHTML(item.topic_name)} · 预计 ${item.estimated_minutes} 分钟</div>
           </div>
-          <span class="pill ${item.difficulty === "advanced" ? "warn" : ""}">${escapeHTML(item.difficulty)}</span>
+          <span class="pill ${statusPillClass(item)}">${escapeHTML(item.status_label || item.difficulty)}</span>
         </div>
         <div class="meta">${escapeHTML(item.content)}</div>
+        <div class="group-meta">
+          <span>难度：${escapeHTML(item.difficulty)}</span>
+          <span>提交：${escapeHTML(item.attempts || 0)} 次</span>
+          <span>最好得分：${escapeHTML(item.best_score || 0)}</span>
+          <span>累计用时：${escapeHTML(item.duration_minutes || 0)} 分钟</span>
+        </div>
         ${item.recommend_reason ? `<div class="meta"><strong>推荐原因：</strong>${escapeHTML(item.recommend_reason)}</div>` : ""}
         <div class="tag-list">${(item.tags || []).map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join("")}</div>
         <details>
@@ -473,6 +650,94 @@
         <button class="primary" type="button" onclick="window.location.href='/questions/${escapeHTML(item.id)}'">进入做题</button>
       </article>
     `;
+
+    const renderChapterNav = (groups) => {
+      chapterNav.innerHTML = (groups || []).map(group => `
+        <button type="button" class="${group.id === activeGroupId ? "active" : ""}" data-group-id="${escapeHTML(group.id)}">
+          <strong>${escapeHTML(group.title)}</strong>
+          <span class="meta">${group.completed}/${group.total} 题 · ${escapeHTML(group.sections ? group.sections.length : 0)} 个知识点</span>
+        </button>
+      `).join("") || '<div class="meta">暂无章节。</div>';
+
+      chapterNav.querySelectorAll("button[data-group-id]").forEach(button => {
+        button.addEventListener("click", () => {
+          activeGroupId = button.dataset.groupId;
+          renderKnowledgeGroups(currentQuestionGroups);
+          document.querySelector(".main").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    };
+
+    const renderKnowledgeGroups = (groups) => {
+      currentQuestionGroups = groups || [];
+      if (!activeGroupId && currentQuestionGroups.length) {
+        activeGroupId = currentQuestionGroups.find(group => group.total > 0)?.id || currentQuestionGroups[0].id;
+      }
+      renderChapterNav(currentQuestionGroups);
+      const activeGroup = currentQuestionGroups.find(group => group.id === activeGroupId) || currentQuestionGroups[0];
+      if (!activeGroup) {
+        knowledgeGroupList.innerHTML = '<div class="meta">暂无题目分组。</div>';
+        return;
+      }
+
+      knowledgeGroupList.innerHTML = `
+        <section class="knowledge-group">
+          <div class="group-head">
+            <div class="group-title-line">
+              <div class="group-title">${escapeHTML(activeGroup.title)}</div>
+              <span class="pill">${activeGroup.completed}/${activeGroup.total}</span>
+            </div>
+            <div class="meta">${escapeHTML(activeGroup.description)}</div>
+            <div class="bar"><span style="--width: ${Math.max(0, Math.min(100, activeGroup.completion_rate || 0))}%"></span></div>
+            <div class="group-meta">
+              <span>完成率 ${escapeHTML(activeGroup.completion_rate || 0)}%</span>
+              <span>已尝试 ${escapeHTML(activeGroup.attempted || 0)} 题</span>
+              <span>累计用时 ${escapeHTML(activeGroup.duration_minutes || 0)} 分钟</span>
+              <span>知识点 ${escapeHTML(activeGroup.sections ? activeGroup.sections.length : 0)} 个</span>
+            </div>
+            <div class="compact-actions">
+              <button class="ghost" id="prevChapterBtn" type="button">上一章</button>
+              <button class="ghost" id="nextChapterBtn" type="button">下一章</button>
+            </div>
+          </div>
+          ${(activeGroup.sections || []).map(section => `
+            <details class="section-question-block ${section.total ? "" : "empty"}" ${section.total ? "open" : ""}>
+              <summary class="section-title-line">
+                <div>
+                  <div class="section-title">${escapeHTML(section.title)}</div>
+                  <div class="meta">${escapeHTML(section.summary)}</div>
+                </div>
+                <span class="pill ${section.total ? "" : "muted"}">${section.total ? `${section.completed}/${section.total}` : "待补题"}</span>
+              </summary>
+              ${section.total ? `
+                <div class="section-body">
+                  <div class="bar"><span style="--width: ${Math.max(0, Math.min(100, section.completion_rate || 0))}%"></span></div>
+                  <div class="group-meta">
+                    <span>已尝试 ${escapeHTML(section.attempted || 0)} 题</span>
+                    <span>累计用时 ${escapeHTML(section.duration_minutes || 0)} 分钟</span>
+                  </div>
+                  <div class="question-row-grid">
+                    ${(section.questions || []).map(item => renderQuestionCard(item)).join("")}
+                  </div>
+                </div>
+              ` : '<div class="meta">这个学习中心知识点暂时还没有挂接题目，后续补题时会直接出现在这里。</div>'}
+            </details>
+          `).join("")}
+        </section>
+      `;
+
+      const activeIndex = currentQuestionGroups.findIndex(group => group.id === activeGroup.id);
+      document.getElementById("prevChapterBtn").addEventListener("click", () => {
+        const nextIndex = Math.max(0, activeIndex - 1);
+        activeGroupId = currentQuestionGroups[nextIndex].id;
+        renderKnowledgeGroups(currentQuestionGroups);
+      });
+      document.getElementById("nextChapterBtn").addEventListener("click", () => {
+        const nextIndex = Math.min(currentQuestionGroups.length - 1, activeIndex + 1);
+        activeGroupId = currentQuestionGroups[nextIndex].id;
+        renderKnowledgeGroups(currentQuestionGroups);
+      });
+    };
 
     const populateTopics = (topics) => {
       const options = topics.map(item => `<option value="${escapeHTML(item.value)}">${escapeHTML(item.label)}</option>`).join("");
@@ -485,6 +750,7 @@
       userMeta.textContent = `当前用户：${me.username}`;
       const overview = await authedFetch("/question-bank/overview");
       totalQuestions.textContent = overview.stats.total_questions;
+      completedQuestions.textContent = overview.stats.completed_questions || 0;
       recommendedDifficulty.textContent = overview.stats.recommended_difficulty;
       levelName.textContent = overview.level.name;
       populateTopics(overview.facets.topics || []);
@@ -501,9 +767,8 @@
         keyword: keywordInput.value.trim()
       });
       const data = await authedFetch(`/question-bank/questions?${params.toString()}`);
-      questionList.innerHTML = (data.items || [])
-        .map(item => renderQuestionCard(item))
-        .join("") || '<div class="meta">没有找到匹配题目，可以放宽筛选条件。</div>';
+      activeGroupId = "";
+      renderKnowledgeGroups(data.knowledge_groups || []);
     };
 
     const generateQuiz = async () => {

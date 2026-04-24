@@ -209,8 +209,32 @@ class EnhancedUserAgent(BaseAgent):
                 "target_exercise": None,
             }
 
+    def _plain_enhancement(self, content: str) -> Dict[str, Any]:
+        return {
+            "original_content": content,
+            "enhanced_content": content,
+            "was_enhanced": False,
+            "context_analysis": {"success": True, "skipped": True, "reason": "fast_path"},
+            "analysis_confidence": 1.0,
+            "target_exercise": None,
+        }
+
+    def _should_enhance_user_input(self, request_type: str, content: str, user_id: str) -> bool:
+        if len(content.strip()) > 1200:
+            return False
+        history = context_manager.get_dialog_history(user_id, limit=3)
+        if not history:
+            return False
+        if request_type != "auto" and len(content.strip()) > 12:
+            return False
+        return len(content.strip()) <= 120
+
     async def receive_user_request(
-        self, request_type: str, content: str, user_id: str
+        self,
+        request_type: str,
+        content: str,
+        user_id: str,
+        context: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         """Validate, enhance, and forward a request to the main agent."""
         try:
@@ -241,9 +265,13 @@ class EnhancedUserAgent(BaseAgent):
             },
         )
 
-        enhancement_result = await self.enhance_user_input_with_context(content, user_id)
+        if self._should_enhance_user_input(request_type, content, user_id):
+            enhancement_result = await self.enhance_user_input_with_context(content, user_id)
+        else:
+            enhancement_result = self._plain_enhancement(content)
         conversation_context = context_manager.get_conversation_context(user_id) or {}
         dialog_history = context_manager.get_dialog_history(user_id, limit=10)
+        external_learning_context = (context or {}).get("external_learning_context", {})
 
         request = {
             "type": request_type,
@@ -260,6 +288,7 @@ class EnhancedUserAgent(BaseAgent):
                 "conversation_context": conversation_context,
                 "recent_history": dialog_history,
                 "learning_progress": context_manager.get_learning_progress(user_id) or {},
+                "external_learning_context": external_learning_context,
             },
             "target_exercise": enhancement_result.get("target_exercise"),
         }

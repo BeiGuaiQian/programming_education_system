@@ -24,13 +24,25 @@ class AppStore:
         self.db_path = str(Path(db_path))
         self._local = threading.local()
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._init_db()
+        try:
+            self._init_db()
+        except sqlite3.DatabaseError as exc:
+            if not self._is_database_corruption(exc):
+                raise
+            self.close()
+            self._recover_malformed_database(exc)
+            self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
         connection = getattr(self._local, "connection", None)
         if connection is not None:
             return connection
 
+        connection = self._open_connection()
+        self._local.connection = connection
+        return connection
+
+    def _open_connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(
             self.db_path,
             timeout=5,
@@ -38,15 +50,47 @@ class AppStore:
             isolation_level=None,
         )
         connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA busy_timeout=5000")
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=NORMAL")
-        connection.execute("PRAGMA temp_store=MEMORY")
-        connection.execute("PRAGMA cache_size=-20000")
-        connection.execute("PRAGMA mmap_size=268435456")
-        self._local.connection = connection
+        try:
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA busy_timeout=5000")
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA synchronous=NORMAL")
+            connection.execute("PRAGMA temp_store=MEMORY")
+            connection.execute("PRAGMA cache_size=-20000")
+            connection.execute("PRAGMA mmap_size=268435456")
+        except sqlite3.DatabaseError:
+            connection.close()
+            raise
         return connection
+
+    def close(self) -> None:
+        connection = getattr(self._local, "connection", None)
+        if connection is not None:
+            connection.close()
+            self._local.connection = None
+
+    def _recover_malformed_database(self, exc: sqlite3.DatabaseError) -> None:
+        db_path = Path(self.db_path)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        for suffix in ("", "-wal", "-shm"):
+            path = Path(f"{self.db_path}{suffix}")
+            if not path.exists():
+                continue
+            backup = db_path.with_name(f"{db_path.name}{suffix}.corrupt-{timestamp}")
+            if backup.exists():
+                backup = db_path.with_name(
+                    f"{db_path.name}{suffix}.corrupt-{timestamp}-{secrets.token_hex(3)}"
+                )
+            path.replace(backup)
+        print(
+            f"SQLite database was malformed and has been backed up near {db_path}. "
+            f"A fresh database will be created. Original error: {exc}"
+        )
+
+    @staticmethod
+    def _is_database_corruption(exc: sqlite3.DatabaseError) -> bool:
+        message = str(exc).lower()
+        return "malformed" in message or "file is not a database" in message
 
     def _init_db(self) -> None:
         with self._connect() as conn:
@@ -60,6 +104,9 @@ class AppStore:
                     nickname TEXT,
                     avatar_url TEXT,
                     bio TEXT,
+                    learning_goal TEXT,
+                    learning_style TEXT,
+                    preferred_pace TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -133,6 +180,24 @@ class AppStore:
 
                 CREATE INDEX IF NOT EXISTS idx_question_submissions_user_question
                 ON question_submissions(username, question_id, submitted_at DESC);
+
+                CREATE TABLE IF NOT EXISTS learning_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    target_type TEXT NOT NULL,
+                    target_id TEXT,
+                    duration_seconds REAL,
+                    metadata TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(username) REFERENCES users(username) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_learning_events_user_created
+                ON learning_events(username, created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS idx_learning_events_user_target
+                ON learning_events(username, target_type, target_id);
                 """
             )
             user_columns = {
@@ -145,6 +210,12 @@ class AppStore:
                 conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
             if "bio" not in user_columns:
                 conn.execute("ALTER TABLE users ADD COLUMN bio TEXT")
+            if "learning_goal" not in user_columns:
+                conn.execute("ALTER TABLE users ADD COLUMN learning_goal TEXT")
+            if "learning_style" not in user_columns:
+                conn.execute("ALTER TABLE users ADD COLUMN learning_style TEXT")
+            if "preferred_pace" not in user_columns:
+                conn.execute("ALTER TABLE users ADD COLUMN preferred_pace TEXT")
             conn.execute(
                 """
                 UPDATE users
@@ -196,7 +267,16 @@ class AppStore:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT username, nickname, avatar_url, bio, created_at, updated_at
+                SELECT
+                    username,
+                    nickname,
+                    avatar_url,
+                    bio,
+                    learning_goal,
+                    learning_style,
+                    preferred_pace,
+                    created_at,
+                    updated_at
                 FROM users
                 WHERE username = ?
                 """,
@@ -233,6 +313,68 @@ class AppStore:
         if clean_bio is not None:
             updates.append("bio = ?")
             values.append(clean_bio)
+
+        if not updates:
+            user = self.get_user(username)
+            if user is None:
+                raise ValueError("用户不存在")
+            return user
+
+        updates.append("updated_at = ?")
+        values.append(self._now())
+        values.append(username)
+
+        with self._connect() as conn:
+            cursor = conn.execute(
+                f"""
+                UPDATE users
+                SET {", ".join(updates)}
+                WHERE username = ?
+                """,
+                tuple(values),
+            )
+        if cursor.rowcount == 0:
+            raise ValueError("用户不存在")
+        user = self.get_user(username)
+        if user is None:
+            raise ValueError("用户不存在")
+        return user
+
+    def update_learning_preferences(
+        self,
+        username: str,
+        learning_goal: Optional[str] = None,
+        learning_style: Optional[str] = None,
+        preferred_pace: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        clean_goal = learning_goal.strip() if learning_goal is not None else None
+        clean_style = learning_style.strip() if learning_style is not None else None
+        clean_pace = preferred_pace.strip() if preferred_pace is not None else None
+
+        if clean_goal is not None and len(clean_goal) > 120:
+            raise ValueError("学习目标不能超过 120 个字符")
+        if clean_style is not None and clean_style not in {
+            "",
+            "concept_first",
+            "example_first",
+            "practice_first",
+            "debug_first",
+        }:
+            raise ValueError("学习方式不在支持范围内")
+        if clean_pace is not None and clean_pace not in {"", "slow", "normal", "fast"}:
+            raise ValueError("学习节奏不在支持范围内")
+
+        updates: List[str] = []
+        values: List[Any] = []
+        if clean_goal is not None:
+            updates.append("learning_goal = ?")
+            values.append(clean_goal)
+        if clean_style is not None:
+            updates.append("learning_style = ?")
+            values.append(clean_style)
+        if clean_pace is not None:
+            updates.append("preferred_pace = ?")
+            values.append(clean_pace)
 
         if not updates:
             user = self.get_user(username)
@@ -635,6 +777,181 @@ class AppStore:
             except json.JSONDecodeError:
                 data["test_result"] = None
         return data
+
+    def get_question_progress_summary(self, username: str) -> Dict[str, Any]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, question_id, passed, score, submitted_at
+                FROM question_submissions
+                WHERE username = ?
+                ORDER BY id ASC
+                """,
+                (username,),
+            ).fetchall()
+
+        per_question: Dict[str, Dict[str, Any]] = {}
+        for row in rows:
+            data = dict(row)
+            question_id = str(data["question_id"])
+            item = per_question.setdefault(
+                question_id,
+                {
+                    "question_id": question_id,
+                    "attempts": 0,
+                    "best_score": 0.0,
+                    "latest_score": 0.0,
+                    "passed": False,
+                    "last_submitted_at": None,
+                },
+            )
+            item["attempts"] += 1
+            score = float(data["score"])
+            item["best_score"] = max(float(item["best_score"]), score)
+            item["latest_score"] = score
+            item["passed"] = bool(data["passed"]) or bool(item["passed"])
+            item["last_submitted_at"] = data["submitted_at"]
+
+        return {
+            "total_attempts": len(rows),
+            "completed_questions": sum(1 for item in per_question.values() if item["passed"]),
+            "average_best_score": (
+                round(
+                    sum(float(item["best_score"]) for item in per_question.values())
+                    / len(per_question),
+                    1,
+                )
+                if per_question
+                else 0.0
+            ),
+            "questions": list(per_question.values()),
+        }
+
+    def record_learning_event(
+        self,
+        username: str,
+        event_type: str,
+        target_type: str,
+        target_id: Optional[str] = None,
+        duration_seconds: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        clean_event_type = event_type.strip()[:80]
+        clean_target_type = target_type.strip()[:80]
+        clean_target_id = target_id.strip()[:160] if target_id else None
+        if not clean_event_type or not clean_target_type:
+            raise ValueError("事件类型和目标类型不能为空")
+
+        clean_duration = None
+        if duration_seconds is not None:
+            clean_duration = max(0.0, min(float(duration_seconds), 24 * 60 * 60))
+
+        metadata_json = (
+            json.dumps(metadata or {}, ensure_ascii=False)[:4000]
+            if metadata is not None
+            else None
+        )
+        created_at = self._now()
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO learning_events
+                (username, event_type, target_type, target_id, duration_seconds, metadata, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    username,
+                    clean_event_type,
+                    clean_target_type,
+                    clean_target_id,
+                    clean_duration,
+                    metadata_json,
+                    created_at,
+                ),
+            )
+        return {
+            "id": cursor.lastrowid,
+            "username": username,
+            "event_type": clean_event_type,
+            "target_type": clean_target_type,
+            "target_id": clean_target_id,
+            "duration_seconds": clean_duration,
+            "metadata": metadata or {},
+            "created_at": created_at,
+        }
+
+    def get_learning_behavior_summary(self, username: str, limit: int = 12) -> Dict[str, Any]:
+        user = self.get_user(username) or {}
+        with self._connect() as conn:
+            totals = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS total_events,
+                    COALESCE(SUM(duration_seconds), 0) AS total_duration_seconds,
+                    COALESCE(AVG(NULLIF(duration_seconds, 0)), 0) AS average_duration_seconds
+                FROM learning_events
+                WHERE username = ?
+                """,
+                (username,),
+            ).fetchone()
+            target_rows = conn.execute(
+                """
+                SELECT
+                    target_type,
+                    target_id,
+                    COUNT(*) AS event_count,
+                    COALESCE(SUM(duration_seconds), 0) AS duration_seconds,
+                    MAX(created_at) AS last_seen_at
+                FROM learning_events
+                WHERE username = ?
+                GROUP BY target_type, target_id
+                ORDER BY duration_seconds DESC, event_count DESC
+                LIMIT ?
+                """,
+                (username, limit),
+            ).fetchall()
+            recent_rows = conn.execute(
+                """
+                SELECT event_type, target_type, target_id, duration_seconds, metadata, created_at
+                FROM learning_events
+                WHERE username = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (username, limit),
+            ).fetchall()
+
+        recent_events = []
+        for row in recent_rows:
+            data = dict(row)
+            if data.get("metadata"):
+                try:
+                    data["metadata"] = json.loads(data["metadata"])
+                except json.JSONDecodeError:
+                    data["metadata"] = {}
+            else:
+                data["metadata"] = {}
+            recent_events.append(data)
+
+        total_duration = float(totals["total_duration_seconds"] if totals else 0.0)
+        stuck_targets = [
+            dict(row)
+            for row in target_rows
+            if float(row["duration_seconds"] or 0.0) >= 180 and str(row["target_type"]) in {"question", "lesson"}
+        ]
+        return {
+            "preferences": {
+                "learning_goal": user.get("learning_goal") or "",
+                "learning_style": user.get("learning_style") or "",
+                "preferred_pace": user.get("preferred_pace") or "",
+            },
+            "total_events": int(totals["total_events"] if totals else 0),
+            "total_duration_seconds": round(total_duration, 1),
+            "average_duration_seconds": round(float(totals["average_duration_seconds"] if totals else 0.0), 1),
+            "target_focus": [dict(row) for row in target_rows],
+            "stuck_targets": stuck_targets[:5],
+            "recent_events": recent_events,
+        }
 
     def _get_session(self, column: str, hashed_token: str) -> Optional[Dict[str, Any]]:
         with self._connect() as conn:

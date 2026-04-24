@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>题目详情 - 编程教育智能体系统</title>
+  <link rel="stylesheet" href="/static/edu_ide.css">
   <style>
     :root {
       --bg: #eef4f7;
@@ -291,6 +292,8 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+  <script src="/static/edu_ide.js"></script>
   <script>
     const questionTitle = document.getElementById("questionTitle");
     const questionMeta = document.getElementById("questionMeta");
@@ -311,6 +314,8 @@
     let refreshToken = localStorage.getItem("pes_refresh_token");
     let question = null;
     let latestCode = "";
+    let questionEnteredAt = Date.now();
+    let eduIDE = null;
 
     if (!accessToken || !refreshToken) {
       window.location.href = "/";
@@ -366,9 +371,51 @@
       return data;
     };
 
+    const trackLearningEvent = (eventType, targetType, targetId, durationSeconds = null, metadata = {}) => {
+      if (!accessToken) return;
+      fetch("/analytics/events", {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          event_type: eventType,
+          target_type: targetType,
+          target_id: targetId,
+          duration_seconds: durationSeconds,
+          metadata
+        })
+      }).catch(() => {});
+    };
+
+    const flushQuestionDwell = () => {
+      if (!question) return;
+      const durationSeconds = Math.round((Date.now() - questionEnteredAt) / 1000);
+      if (durationSeconds < 3) return;
+      trackLearningEvent("question_dwell", "question", question.id, durationSeconds, {
+        title: question.title,
+        page: "question_detail"
+      });
+      questionEnteredAt = Date.now();
+    };
+
     const updateEditorStatus = () => {
-      const lines = codeEditor.value.split("\n").length;
-      editorStatus.textContent = `${lines} 行 / ${codeEditor.value.length} 字符，Ctrl/Cmd + Enter 提交`;
+      const value = getEditorCode();
+      const lines = value.split("\n").length;
+      editorStatus.textContent = `${lines} 行 / ${value.length} 字符，Ctrl/Cmd + Enter 提交`;
+    };
+
+    const getEditorCode = () => eduIDE ? eduIDE.getValue() : codeEditor.value;
+    const setEditorCode = (value) => {
+      if (eduIDE) eduIDE.setValue(value || "");
+      else codeEditor.value = value || "";
+      updateEditorStatus();
+    };
+    const focusEditor = () => {
+      if (eduIDE) eduIDE.focus();
+      else codeEditor.focus();
     };
 
     const renderTests = (tests) => {
@@ -397,10 +444,15 @@
       resultBox.className = `result-box ${payload.passed ? "ok" : "bad"}`;
       resultBox.textContent = `判题结果：${payload.passed ? "通过" : "未通过"}\n得分：${payload.score}\n\n${payload.feedback || ""}`;
       renderTests((payload.test_result || {}).test_results || []);
+      if (eduIDE) {
+        eduIDE.markSubmitResult(payload.passed);
+        eduIDE.renderSubmitFeedback(payload.ide_feedback);
+      }
     };
 
     const renderQuestion = (payload) => {
       question = payload.question;
+      questionEnteredAt = Date.now();
       questionTitle.textContent = question.title;
       questionMeta.textContent = `${question.topic_name} · ${question.difficulty} · ${question.type} · 预计 ${question.estimated_minutes} 分钟`;
       tagList.innerHTML = (question.tags || []).map(tag => `<span class="pill">${escapeHTML(tag)}</span>`).join("");
@@ -408,7 +460,7 @@
       exampleList.innerHTML = (question.examples || []).map(item => `输入：${escapeHTML(item.input)}<br>输出：${escapeHTML(item.output)}`).join("<hr>");
       hintList.innerHTML = (question.hints || []).map(hint => `- ${escapeHTML(hint)}`).join("<br>");
       latestCode = (payload.latest_submission && payload.latest_submission.code) || "";
-      codeEditor.value = latestCode || question.starter_code || "";
+      setEditorCode(latestCode || question.starter_code || "");
       updateEditorStatus();
       if (payload.latest_submission) {
         renderResult({
@@ -418,6 +470,11 @@
           test_result: payload.latest_submission.test_result
         });
       }
+      trackLearningEvent("question_open", "question", question.id, null, {
+        title: question.title,
+        topic: question.topic,
+        difficulty: question.difficulty
+      });
     };
 
     const submitCode = async () => {
@@ -431,10 +488,14 @@
         const payload = await authedFetch(`/question-bank/questions/${question.id}/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: codeEditor.value })
+          body: JSON.stringify({ code: getEditorCode() })
         });
-        latestCode = codeEditor.value;
+        latestCode = getEditorCode();
         renderResult(payload);
+        trackLearningEvent("question_submit_client", "question", question.id, null, {
+          passed: payload.passed,
+          score: payload.score
+        });
       } catch (error) {
         resultBox.className = "result-box bad";
         resultBox.textContent = `提交失败：${error.message}`;
@@ -462,25 +523,40 @@
 
     submitBtn.addEventListener("click", submitCode);
     starterBtn.addEventListener("click", () => {
-      codeEditor.value = question ? question.starter_code || "" : "";
+      setEditorCode(question ? question.starter_code || "" : "");
       updateEditorStatus();
-      codeEditor.focus();
+      focusEditor();
     });
     lastBtn.addEventListener("click", () => {
-      codeEditor.value = latestCode || (question ? question.starter_code || "" : "");
+      setEditorCode(latestCode || (question ? question.starter_code || "" : ""));
       updateEditorStatus();
-      codeEditor.focus();
+      focusEditor();
     });
     answerBtn.addEventListener("click", () => {
       if (!question) return;
-      codeEditor.value = question.answer || "";
+      setEditorCode(question.answer || "");
       updateEditorStatus();
-      codeEditor.focus();
+      focusEditor();
     });
 
     document.getElementById("backBtn").addEventListener("click", () => { window.location.href = "/questions"; });
     document.getElementById("learnBtn").addEventListener("click", () => { window.location.href = "/learn"; });
     document.getElementById("profileBtn").addEventListener("click", () => { window.location.href = "/profile"; });
+
+    createEduIDE({
+      textarea: codeEditor,
+      statusEl: editorStatus,
+      apiFetch: authedFetch,
+      contextTypeGetter: () => "question",
+      targetIdGetter: () => question ? question.id : questionId,
+      expectedFunctionGetter: () => question ? question.expected_function || "" : "",
+      requirementsGetter: () => question ? question.hints || [] : [],
+      onSubmit: submitCode,
+      onChange: updateEditorStatus
+    }).then(instance => {
+      eduIDE = instance;
+      if (codeEditor.value) eduIDE.setValue(codeEditor.value);
+    });
 
     authedFetch(`/question-bank/questions/${questionId}`)
       .then(renderQuestion)
@@ -488,6 +564,14 @@
         clearAuth();
         window.location.href = "/";
       });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        flushQuestionDwell();
+      } else {
+        questionEnteredAt = Date.now();
+      }
+    });
+    window.addEventListener("beforeunload", flushQuestionDwell);
   </script>
 </body>
 </html>

@@ -51,6 +51,12 @@ class UserCognitionUpdateAgent:
             profile.programming_level = str(profile_data["programming_level"])
         if "learning_style" in profile_data:
             profile.learning_style = str(profile_data["learning_style"])
+        if "learning_goals" in profile_data:
+            profile.learning_goals = [
+                str(goal)
+                for goal in profile_data.get("learning_goals", [])
+                if str(goal).strip()
+            ]
 
         topic = profile_data.get("topic") or self._infer_topic(profile_data.get("content", ""))
         is_correct = self._infer_correctness(profile_data)
