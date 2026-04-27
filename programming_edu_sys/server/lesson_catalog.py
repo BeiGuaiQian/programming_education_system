@@ -6,6 +6,739 @@ from typing import Any, Dict, List, Optional
 
 
 LESSONS: List[Dict[str, Any]] = [
+    # ========== 第一章：安装环境与学习准备 ==========
+    {
+        "id": "what-is-python",
+        "language": "python",
+        "title": "Python 是什么，适合做什么",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "Python 官方文档 What is Python?",
+            "url": "https://docs.python.org/3/faq/general.html",
+            "authority": "Python Software Foundation",
+        },
+        "summary": (
+            "Python 是一门简单易学、功能强大的编程语言。"
+            "它的设计哲学强调代码的可读性和简洁性，让你可以用更少的代码做更多的事情。"
+            "无论是数据分析、人工智能、网站开发还是自动化办公，Python 都能胜任。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. Python 是一门解释型编程语言",
+                "explanation": (
+                    "编程语言主要分为编译型和解释型两种。"
+                    "编译型语言（如 C、Java）需要先把代码转换成机器语言才能运行。"
+                    "而 Python 是解释型语言，代码写好后可以直接运行，解释器会逐行翻译成机器指令。"
+                    "这意味着你可以快速测试代码，看到结果，非常适合学习和原型开发。"
+                ),
+                "example": (
+                    "# 写好后直接运行，不需要编译\n"
+                    "print('Hello, World!')\n"
+                    "# 输出: Hello, World!"
+                ),
+            },
+            {
+                "title": "2. Python 的语法简洁易读",
+                "explanation": (
+                    "Python 的设计哲学是'优雅胜于丑陋，明确胜于隐晦'。"
+                    "它使用缩进来表示代码块，而不是大括号，这让代码看起来像伪代码一样清晰。"
+                    "同样的功能，Python 的代码量通常只有 Java 或 C++ 的 1/3 到 1/5。"
+                    "这种简洁性让初学者能更快上手，也让团队协作更高效。"
+                ),
+                "example": (
+                    "# 计算 1 到 10 的和\n"
+                    "total = 0\n"
+                    "for i in range(1, 11):\n"
+                    "    total += i\n"
+                    "print(total)  # 输出: 55"
+                ),
+            },
+            {
+                "title": "3. Python 的应用领域非常广泛",
+                "explanation": (
+                    "Python 不是一门局限于某个领域的语言。"
+                    "在数据科学领域，有 NumPy、Pandas、Matplotlib 等强大工具。"
+                    "在人工智能领域，TensorFlow、PyTorch 都是基于 Python 的。"
+                    "在 Web 开发领域，Django、Flask 框架让建站变得简单。"
+                    "在自动化办公领域，Python 可以处理 Excel、PDF、邮件等。"
+                    "学习 Python，就是打开了一扇通往多个技术领域的大门。"
+                ),
+                "example": (
+                    "# 用 pandas 读取 Excel 文件（示例）\n"
+                    "# import pandas as pd\n"
+                    "# data = pd.read_excel('data.xlsx')\n"
+                    "# print(data.head())"
+                ),
+            },
+            {
+                "title": "4. Python 拥有庞大的社区和丰富的资源",
+                "explanation": (
+                    "Python 诞生于 1991 年，经过 30 多年的发展，已经形成了全球最大的编程社区之一。"
+                    "无论你遇到什么问题，几乎都能在 Stack Overflow、GitHub 或中文社区找到答案。"
+                    "PyPI（Python Package Index）上有超过 40 万个第三方库，涵盖各种功能。"
+                    "这些库大多是开源免费的，你可以直接安装使用，不用重复造轮子。"
+                ),
+                "example": (
+                    "# 安装第三方库（在终端中运行）\n"
+                    "# pip install requests\n"
+                    "\n"
+                    "# 使用 requests 库发送网络请求\n"
+                    "import requests\n"
+                    "response = requests.get('https://api.github.com')\n"
+                    "print(response.status_code)"
+                ),
+            },
+            {
+                "title": "5. 为什么初学者应该选择 Python",
+                "explanation": (
+                    "对于编程新手来说，Python 是最佳的入门语言。"
+                    "首先，它的语法接近自然语言，你可以快速理解代码在做什么。"
+                    "其次，它能让你专注于编程逻辑，而不是纠结于复杂的语法细节。"
+                    "最后，学会 Python 后，你可以很快进入实际项目，获得成就感。"
+                    "无论是想转行程序员，还是想提升工作效率，Python 都是理想的选择。"
+                ),
+                "example": (
+                    "# 简单的猜数字游戏\n"
+                    "import random\n"
+                    "number = random.randint(1, 100)\n"
+                    "guess = int(input('猜一个 1-100 的数字: '))\n"
+                    "if guess == number:\n"
+                    "    print('恭喜你，猜对了！')\n"
+                    "else:\n"
+                    "    print(f'很遗憾，正确答案是 {number}')"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "what-is-python-ex-01",
+            "title": "写出你的第一个 Python 程序",
+            "description": "在交互式解释器中，尝试输入以下代码并观察结果：打印你的名字、计算 123 + 456、使用 type() 函数查看 'Hello' 的类型。",
+            "starter_code": "# 在这里输入你的代码\n# 示例：print('你的名字')",
+            "test_cases": [
+                {"input": "", "expected_output": "", "description": "在解释器中交互式完成即可"}
+            ],
+        },
+    },
+    {
+        "id": "install-python-windows",
+        "language": "python",
+        "title": "Windows 安装 Python",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "Python 官方文档 Windows 安装指南",
+            "url": "https://docs.python.org/3/using/windows.html",
+            "authority": "Python Software Foundation",
+        },
+        "summary": (
+            "在 Windows 上安装 Python 非常简单，只需要从官网下载安装包，运行安装程序，"
+            "记得勾选'Add Python to PATH'选项，然后验证安装是否成功即可。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. 从官网下载 Python 安装包",
+                "explanation": (
+                    "访问 Python 官方网站 python.org，点击 Downloads 菜单，网站会自动推荐适合你系统的版本。"
+                    "通常建议下载最新的稳定版本（如 Python 3.11 或 3.12）。"
+                    "下载的文件是一个 .exe 可执行程序，大小约 20-30MB。"
+                    "确保从官网下载，避免使用来路不明的安装包，以保证安全性。"
+                ),
+                "example": (
+                    "# 官网地址\n"
+                    "https://www.python.org/downloads/\n"
+                    "\n"
+                    "# 点击 Download Python 3.x.x 按钮即可下载"
+                ),
+            },
+            {
+                "title": "2. 运行安装程序并勾选重要选项",
+                "explanation": (
+                    "下载完成后，双击运行安装程序。"
+                    "最关键的一步是：勾选'Add Python.exe to PATH'（将 Python 添加到环境变量）。"
+                    "这个选项让你在命令行中任何位置都能直接使用 python 命令。"
+                    "如果忘记勾选，后续需要手动配置，会比较麻烦。"
+                    "建议选择'Install Now'进行默认安装，或者选择'Customize installation'自定义安装路径。"
+                ),
+                "example": (
+                    "# 安装时务必勾选:\n"
+                    "☑ Add Python.exe to PATH\n"
+                    "\n"
+                    "# 推荐选择:\n"
+                    "☑ Use admin privileges when installing py.exe"
+                ),
+            },
+            {
+                "title": "3. 验证 Python 是否安装成功",
+                "explanation": (
+                    "安装完成后，需要验证 Python 是否正确安装。"
+                    "打开命令提示符（CMD）或 PowerShell，输入 python --version。"
+                    "如果显示版本号（如 Python 3.11.4），说明安装成功。"
+                    "也可以输入 python 进入交互式解释器，看到 >>> 提示符表示可以开始写代码了。"
+                    "输入 exit() 或按 Ctrl+Z 然后回车可以退出解释器。"
+                ),
+                "example": (
+                    "C:\\> python --version\n"
+                    "Python 3.11.4\n"
+                    "\n"
+                    "C:\\> python\n"
+                    "Python 3.11.4 (tags/v3.11.4:d2340ef, Jun  7 2023, 05:45:37)\n"
+                    ">>> print('Hello, Python!')\n"
+                    "Hello, Python!\n"
+                    ">>> exit()"
+                ),
+            },
+            {
+                "title": "4. 安装 pip 包管理工具",
+                "explanation": (
+                    "pip 是 Python 的包管理工具，用来安装第三方库。"
+                    "最新版本的 Python 安装程序已经默认包含了 pip。"
+                    "可以通过 pip --version 命令检查 pip 是否已安装。"
+                    "pip 让你可以一键安装各种强大的扩展库，如 numpy、pandas、requests 等。"
+                    "这是 Python 生态系统如此丰富的重要原因之一。"
+                ),
+                "example": (
+                    "C:\\> pip --version\n"
+                    "pip 23.0.1 from ...\\site-packages\\pip (python 3.11)\n"
+                    "\n"
+                    "# 使用 pip 安装第三方库\n"
+                    "C:\\> pip install requests"
+                ),
+            },
+            {
+                "title": "5. 常见问题排查",
+                "explanation": (
+                    "如果输入 python 提示'不是内部或外部命令'，说明 PATH 配置有问题。"
+                    "可以重新运行安装程序，选择 Modify，然后勾选 Add to PATH。"
+                    "或者手动将 Python 安装目录（如 C:\\Python311）添加到系统环境变量 PATH 中。"
+                    "如果安装过程中遇到权限问题，尝试右键以管理员身份运行安装程序。"
+                    "Windows 7 用户可能需要先安装 Service Pack 1 和 KB2533623 更新。"
+                ),
+                "example": (
+                    "# 手动添加 PATH 的步骤:\n"
+                    "1. 右键'此电脑' -> 属性 -> 高级系统设置\n"
+                    "2. 环境变量 -> 系统变量中找到 Path\n"
+                    "3. 编辑 -> 新建 -> 添加 Python 安装路径\n"
+                    "4. 如: C:\\Users\\你的用户名\\AppData\\Local\\Programs\\Python\\Python311"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "install-python-windows-ex-01",
+            "title": "安装并验证 Python",
+            "description": "按照课程步骤，在 Windows 上完成 Python 的安装，并在命令行中验证 python --version 能正确显示版本号。",
+            "starter_code": "# 在命令行中输入:\n# python --version",
+            "test_cases": [
+                {"input": "", "expected_output": "Python 3.x.x", "description": "显示 Python 版本号即算成功"}
+            ],
+        },
+    },
+    {
+        "id": "install-python-macos-linux",
+        "language": "python",
+        "title": "macOS / Linux 环境说明",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "Python 官方文档 Unix 安装指南",
+            "url": "https://docs.python.org/3/using/unix.html",
+            "authority": "Python Software Foundation",
+        },
+        "summary": (
+            "macOS 和大多数 Linux 发行版都预装了 Python。"
+            "macOS 通常预装 Python 2.7，建议安装 Python 3.x 以获得更好的体验。"
+            "Linux 用户可以使用包管理器快速安装或更新 Python。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. macOS 自带的 Python",
+                "explanation": (
+                    "macOS 系统通常预装了 Python 2.7，位于 /usr/bin/python。"
+                    "但 Python 2 已经停止维护，不建议用于新项目。"
+                    "macOS 也预装了 Python 3，命令是 python3 而不是 python。"
+                    "建议通过 Homebrew 安装最新版本的 Python 3，这样管理起来更方便。"
+                ),
+                "example": (
+                    "$ python --version  # 通常是 Python 2.7.x\n"
+                    "$ python3 --version  # 系统自带的 Python 3\n"
+                    "Python 3.9.6"
+                ),
+            },
+            {
+                "title": "2. 使用 Homebrew 安装 Python（推荐）",
+                "explanation": (
+                    "Homebrew 是 macOS 最流行的包管理器，类似 Linux 的 apt 或 yum。"
+                    "首先安装 Homebrew：访问 brew.sh，复制安装命令到终端运行。"
+                    "然后使用 brew install python3 安装最新版 Python。"
+                    "安装完成后，python3 和 pip3 命令就可以使用了。"
+                    "Homebrew 安装的 Python 通常比系统自带的更新。"
+                ),
+                "example": (
+                    "# 安装 Homebrew\n"
+                    "$ /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"\n"
+                    "\n"
+                    "# 使用 Homebrew 安装 Python\n"
+                    "$ brew install python\n"
+                    "\n"
+                    "# 验证安装\n"
+                    "$ python3 --version"
+                ),
+            },
+            {
+                "title": "3. Linux 系统安装 Python",
+                "explanation": (
+                    "大多数 Linux 发行版都预装了 Python 3。"
+                    "Ubuntu/Debian 使用 apt 包管理器：sudo apt update && sudo apt install python3 python3-pip。"
+                    "CentOS/RHEL/Fedora 使用 yum 或 dnf：sudo dnf install python3 python3-pip。"
+                    "Arch Linux 使用 pacman：sudo pacman -S python python-pip。"
+                    "安装完成后，使用 python3 命令调用 Python，pip3 调用包管理器。"
+                ),
+                "example": (
+                    "# Ubuntu/Debian\n"
+                    "$ sudo apt update\n"
+                    "$ sudo apt install python3 python3-pip\n"
+                    "\n"
+                    "# CentOS/RHEL/Fedora\n"
+                    "$ sudo dnf install python3 python3-pip\n"
+                    "\n"
+                    "# 验证安装\n"
+                    "$ python3 --version\n"
+                    "$ pip3 --version"
+                ),
+            },
+            {
+                "title": "4. 创建 python 命令的别名",
+                "explanation": (
+                    "在 macOS 和 Linux 上，Python 3 的命令是 python3 而不是 python。"
+                    "如果你习惯直接输入 python，可以创建一个别名。"
+                    "编辑 shell 配置文件（如 ~/.bashrc、~/.zshrc），添加 alias python=python3。"
+                    "然后运行 source ~/.bashrc（或 ~/.zshrc）使配置生效。"
+                    "同样可以为 pip 创建别名：alias pip=pip3。"
+                ),
+                "example": (
+                    "# 编辑 zsh 配置文件（macOS 默认使用 zsh）\n"
+                    "$ echo \"alias python=python3\" >> ~/.zshrc\n"
+                    "$ echo \"alias pip=pip3\" >> ~/.zshrc\n"
+                    "$ source ~/.zshrc\n"
+                    "\n"
+                    "# 现在可以直接使用 python 命令了\n"
+                    "$ python --version"
+                ),
+            },
+            {
+                "title": "5. 虚拟环境简介",
+                "explanation": (
+                    "在 macOS 和 Linux 上，使用 pip 安装包时可能需要 sudo 权限。"
+                    "更好的做法是使用虚拟环境（virtual environment），避免污染系统 Python。"
+                    "创建虚拟环境：python3 -m venv myenv。"
+                    "激活虚拟环境：source myenv/bin/activate（Linux/macOS）。"
+                    "激活后，命令提示符前会显示环境名，此时 pip 安装的包都在这个环境中。"
+                    "退出虚拟环境：deactivate。"
+                ),
+                "example": (
+                    "# 创建虚拟环境\n"
+                    "$ python3 -m venv myproject\n"
+                    "\n"
+                    "# 激活虚拟环境\n"
+                    "$ source myproject/bin/activate\n"
+                    "(myproject) $ pip install requests\n"
+                    "\n"
+                    "# 退出虚拟环境\n"
+                    "(myproject) $ deactivate"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "install-python-macos-linux-ex-01",
+            "title": "检查系统 Python 版本",
+            "description": "打开终端，分别运行 python --version 和 python3 --version，观察输出结果，确认系统是否已安装 Python 3。",
+            "starter_code": "# 在终端中输入:\n# python3 --version",
+            "test_cases": [
+                {"input": "", "expected_output": "Python 3.x.x", "description": "显示 Python 3 版本号"}
+            ],
+        },
+    },
+    {
+        "id": "terminal-basics",
+        "language": "python",
+        "title": "终端与命令行最小必备",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "Python 官方文档 Command line and environment",
+            "url": "https://docs.python.org/3/using/cmdline.html",
+            "authority": "Python Software Foundation",
+        },
+        "summary": (
+            "终端（命令行）是程序员的基本工具。"
+            "学会打开终端、切换目录、运行 Python 程序，是开始编程之旅的第一步。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. 如何打开终端",
+                "explanation": (
+                    "Windows：按 Win+R，输入 cmd 回车打开命令提示符；或输入 powershell 打开 PowerShell。"
+                    "macOS：按 Cmd+空格，输入 terminal 回车打开终端。"
+                    "Linux：按 Ctrl+Alt+T 打开终端，或在应用菜单中搜索 Terminal。"
+                    "VS Code：按 Ctrl+`（反引号）打开集成终端。"
+                    "建议将终端固定在任务栏或 Dock，方便快速打开。"
+                ),
+                "example": (
+                    "# Windows 快捷键\n"
+                    "Win + R -> cmd -> Enter\n"
+                    "\n"
+                    "# macOS 快捷键\n"
+                    "Cmd + Space -> terminal -> Enter\n"
+                    "\n"
+                    "# Linux 快捷键\n"
+                    "Ctrl + Alt + T"
+                ),
+            },
+            {
+                "title": "2. 常用目录操作命令",
+                "explanation": (
+                    "pwd（Print Working Directory）：显示当前所在目录。"
+                    "ls（List，Windows 用 dir）：列出当前目录的文件和文件夹。"
+                    "cd（Change Directory）：切换目录，如 cd Documents 进入 Documents 文件夹。"
+                    "cd ..：返回上一级目录。"
+                    "cd ~：返回用户主目录（Windows 是 cd %USERPROFILE%）。"
+                    "mkdir（Make Directory）：创建新文件夹。"
+                ),
+                "example": (
+                    "$ pwd\n"
+                    "/home/username\n"
+                    "$ ls\n"
+                    "Documents  Downloads  Desktop\n"
+                    "$ cd Documents\n"
+                    "$ pwd\n"
+                    "/home/username/Documents\n"
+                    "$ cd ..\n"
+                    "$ mkdir myproject"
+                ),
+            },
+            {
+                "title": "3. 运行 Python 程序",
+                "explanation": (
+                    "在终端中输入 python（或 python3）进入交互式解释器，可以直接执行 Python 代码。"
+                    "输入 python 文件名.py 可以运行 Python 脚本文件。"
+                    "运行脚本前，确保终端的当前目录在脚本所在位置，或使用完整路径。"
+                    "按 Ctrl+C 可以强制终止正在运行的程序。"
+                    "使用方向键上/下可以查看之前输入过的命令。"
+                ),
+                "example": (
+                    "$ python\n"
+                    ">>> print('Hello')\n"
+                    "Hello\n"
+                    ">>> exit()\n"
+                    "$\n"
+                    "$ python hello.py\n"
+                    "Hello, World!"
+                ),
+            },
+            {
+                "title": "4. 路径的概念",
+                "explanation": (
+                    "绝对路径：从根目录开始的完整路径，如 /home/user/file.txt 或 C:\\Users\\user\\file.txt。"
+                    "相对路径：相对于当前目录的路径，如 ./file.txt 表示当前目录下的 file.txt。"
+                    ".. 表示上级目录，. 表示当前目录。"
+                    "Windows 使用反斜杠 \\ 作为路径分隔符，macOS/Linux 使用正斜杠 /。"
+                    "在 Python 代码中，建议始终使用正斜杠 /，Python 会自动处理跨平台问题。"
+                ),
+                "example": (
+                    "# 绝对路径\n"
+                    "C:\\Users\\Alice\\Documents\\file.txt  # Windows\n"
+                    "/home/alice/documents/file.txt       # macOS/Linux\n"
+                    "\n"
+                    "# 相对路径\n"
+                    "./file.txt      # 当前目录\n"
+                    "../file.txt     # 上级目录\n"
+                    "folder/file.txt # 子目录"
+                ),
+            },
+            {
+                "title": "5. 终端使用小技巧",
+                "explanation": (
+                    "Tab 键自动补全：输入文件名或命令的前几个字母，按 Tab 自动补全。"
+                    "Ctrl+C：终止当前运行的程序。"
+                    "Ctrl+L（或输入 clear）：清屏。"
+                    "Ctrl+A：光标移到行首，Ctrl+E：光标移到行尾。"
+                    "Ctrl+U：删除光标前的所有内容。"
+                    "输入 history 查看命令历史（Windows 是按 F7）。"
+                ),
+                "example": (
+                    "$ pyt  # 按 Tab 键\n"
+                    "$ python  # 自动补全\n"
+                    "\n"
+                    "$ cd Doc  # 按 Tab 键\n"
+                    "$ cd Documents/  # 自动补全"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "terminal-basics-ex-01",
+            "title": "终端基础操作",
+            "description": "打开终端，使用 pwd 查看当前目录，使用 mkdir 创建一个名为 python_learning 的文件夹，然后使用 cd 进入该文件夹，最后使用 python 进入交互式解释器并打印 'Hello, Terminal!'。",
+            "starter_code": "# 在终端中依次执行:\n# mkdir python_learning\n# cd python_learning\n# python\n# >>> print('Hello, Terminal!')",
+            "test_cases": [
+                {"input": "", "expected_output": "Hello, Terminal!", "description": "成功创建文件夹并在终端中运行 Python"}
+            ],
+        },
+    },
+    {
+        "id": "vscode-python-extension",
+        "language": "python",
+        "title": "VS Code 与 Python 插件配置",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "VS Code Python 官方文档",
+            "url": "https://code.visualstudio.com/docs/python/python-tutorial",
+            "authority": "Microsoft",
+        },
+        "summary": (
+            "VS Code 是目前最流行的代码编辑器之一，配合 Python 插件可以提供强大的代码提示、调试和运行功能。"
+            "学会配置好开发环境，能让你的编程效率事半功倍。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. 下载并安装 VS Code",
+                "explanation": (
+                    "访问 code.visualstudio.com 下载适合你系统的安装包。"
+                    "Windows 用户下载 .exe 安装程序，macOS 用户下载 .dmg，Linux 用户下载 .deb 或 .rpm。"
+                    "安装过程很简单，保持默认选项即可。"
+                    "安装完成后，建议将 VS Code 添加到系统 PATH，这样可以在终端中使用 code 命令打开文件。"
+                    "VS Code 是免费开源的软件，由微软维护，更新非常频繁。"
+                ),
+                "example": (
+                    "# 官网下载地址\n"
+                    "https://code.visualstudio.com/\n"
+                    "\n"
+                    "# 安装后验证（在终端中）\n"
+                    "$ code --version\n"
+                    "1.85.0"
+                ),
+            },
+            {
+                "title": "2. 安装 Python 扩展插件",
+                "explanation": (
+                    "打开 VS Code，点击左侧活动栏的 Extensions（扩展）图标，或按 Ctrl+Shift+X。"
+                    "在搜索框中输入 'Python'，找到由 Microsoft 发布的官方 Python 扩展。"
+                    "点击 Install 按钮安装。这个扩展提供了代码高亮、智能提示、调试等功能。"
+                    "同时会自动安装 Pylance（提供更强大的类型检查和代码分析）和 Jupyter 支持。"
+                    "安装完成后，右下角可能会提示选择 Python 解释器。"
+                ),
+                "example": (
+                    "# 安装 Python 扩展后，VS Code 会提供:\n"
+                    "- 代码自动补全\n"
+                    "- 语法错误检查\n"
+                    "- 代码格式化\n"
+                    "- 调试支持\n"
+                    "- 智能提示"
+                ),
+            },
+            {
+                "title": "3. 选择 Python 解释器",
+                "explanation": (
+                    "安装 Python 扩展后，需要告诉 VS Code 使用哪个 Python 版本。"
+                    "按 Ctrl+Shift+P 打开命令面板，输入 'Python: Select Interpreter' 并选择。"
+                    "或者点击右下角的状态栏中的 Python 版本号进行选择。"
+                    "选择你安装的 Python 3.x 版本，路径通常包含 'python.exe' 或 'python3'。"
+                    "选择正确的解释器后，VS Code 就能提供准确的代码提示和错误检查了。"
+                ),
+                "example": (
+                    "# 选择解释器的步骤:\n"
+                    "1. Ctrl+Shift+P 打开命令面板\n"
+                    "2. 输入 'Python: Select Interpreter'\n"
+                    "3. 选择你的 Python 3.x 路径\n"
+                    "\n"
+                    "# 或者点击右下角状态栏的 Python 版本"
+                ),
+            },
+            {
+                "title": "4. 创建和运行 Python 文件",
+                "explanation": (
+                    "在 VS Code 中，点击 File -> New File 创建新文件，保存为 .py 扩展名。"
+                    "编写代码后，可以通过多种方式运行："
+                    "点击右上角的运行按钮（三角形图标）；"
+                    "右键编辑器选择 'Run Python File in Terminal'；"
+                    "按 F5 启动调试模式运行。"
+                    "运行结果会显示在底部的集成终端中。"
+                    "如果代码有错误，VS Code 会在问题面板中高亮显示。"
+                ),
+                "example": (
+                    "# 创建 hello.py 文件\n"
+                    "print('Hello from VS Code!')\n"
+                    "\n"
+                    "# 运行方式:\n"
+                    "# 1. 点击右上角三角形按钮\n"
+                    "# 2. 右键 -> Run Python File in Terminal\n"
+                    "# 3. 按 F5 调试运行"
+                ),
+            },
+            {
+                "title": "5. 配置代码格式化和 Linting",
+                "explanation": (
+                    "好的代码风格能让程序更易读、更易维护。"
+                    "VS Code 可以配置自动格式化，推荐使用 Black 或 autopep8 格式化工具。"
+                    "安装 Black：pip install black，然后在 VS Code 设置中配置 'Python Formatting Provider' 为 Black。"
+                    "设置 'Editor: Format On Save' 为 true，这样保存文件时会自动格式化。"
+                    "还可以启用 Pylint 或 Flake8 进行代码质量检查，帮助你发现潜在问题。"
+                ),
+                "example": (
+                    "# 安装 Black 格式化工具\n"
+                    "$ pip install black\n"
+                    "\n"
+                    "# VS Code 设置 (settings.json)\n"
+                    "{\n"
+                    "    \"python.formatting.provider\": \"black\",\n"
+                    "    \"editor.formatOnSave\": true\n"
+                    "}"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "vscode-python-extension-ex-01",
+            "title": "配置你的 VS Code 开发环境",
+            "description": "完成 VS Code 和 Python 扩展的安装，创建一个新的 Python 文件，编写代码打印 'Hello, VS Code!'，并成功运行看到输出结果。",
+            "starter_code": "# 在 VS Code 中创建新文件，输入以下代码:\nprint('Hello, VS Code!')",
+            "test_cases": [
+                {"input": "", "expected_output": "Hello, VS Code!", "description": "成功在 VS Code 中运行 Python 程序"}
+            ],
+        },
+    },
+    {
+        "id": "first-python-file",
+        "language": "python",
+        "title": "第一个 .py 文件",
+        "topic": "python_basics",
+        "difficulty": "beginner",
+        "source": {
+            "title": "Python 官方教程 2. Using the Python Interpreter",
+            "url": "https://docs.python.org/3/tutorial/interpreter.html",
+            "authority": "Python Software Foundation",
+        },
+        "summary": (
+            "从交互式解释器过渡到真正的 Python 文件，是编程学习的重要一步。"
+            "学会创建、保存和运行 .py 文件，你就迈出了成为程序员的第一步。"
+        ),
+        "knowledge_points": [
+            {
+                "title": "1. 什么是 .py 文件",
+                "explanation": (
+                    ".py 是 Python 源代码文件的标准扩展名。"
+                    "与交互式解释器不同，.py 文件可以保存代码，方便反复运行和修改。"
+                    "你可以用任何文本编辑器创建 .py 文件，但推荐使用 VS Code 等专业编辑器。"
+                    "文件名应该有意义，比如 hello.py、calculator.py，不要用中文或特殊字符。"
+                    "一个 .py 文件通常称为一个 Python 脚本或模块。"
+                ),
+                "example": (
+                    "# 合法的 Python 文件名:\n"
+                    "hello.py\n"
+                    "calculator.py\n"
+                    "data_analysis.py\n"
+                    "\n"
+                    "# 不推荐的文件名:\n"
+                    "我的程序.py  # 避免中文\n"
+                    "hello world.py  # 避免空格\n"
+                    "123.py  # 避免数字开头"
+                ),
+            },
+            {
+                "title": "2. 创建你的第一个 Python 文件",
+                "explanation": (
+                    "打开 VS Code，点击 File -> New File 创建新文件。"
+                    "输入以下代码：print('Hello, World!')。"
+                    "按 Ctrl+S 保存文件，选择保存位置，文件名输入 hello.py。"
+                    "注意文件扩展名必须是 .py，这样 VS Code 才会识别为 Python 文件。"
+                    "保存后，VS Code 会自动启用 Python 语法高亮和代码提示。"
+                ),
+                "example": (
+                    "# hello.py\n"
+                    "print('Hello, World!')\n"
+                    "\n"
+                    "# 也可以多行输出\n"
+                    "print('这是第一行')\n"
+                    "print('这是第二行')\n"
+                    "print('Python 编程，从这里开始！')"
+                ),
+            },
+            {
+                "title": "3. 运行 Python 文件的多种方式",
+                "explanation": (
+                    "方式一：在 VS Code 中点击右上角的运行按钮，或右键选择 'Run Python File in Terminal'。"
+                    "方式二：打开终端，切换到文件所在目录，输入 python hello.py 运行。"
+                    "方式三：在终端中输入 python 文件的完整路径，如 python C:\\Users\\Name\\hello.py。"
+                    "无论哪种方式，都应该看到输出结果显示在终端中。"
+                    "如果看到错误信息，仔细检查代码拼写和缩进。"
+                ),
+                "example": (
+                    "# 方式1: VS Code 中运行\n"
+                    "# 点击右上角三角形按钮\n"
+                    "\n"
+                    "# 方式2: 终端中运行（先切换到文件目录）\n"
+                    "$ cd /path/to/your/file\n"
+                    "$ python hello.py\n"
+                    "Hello, World!\n"
+                    "\n"
+                    "# 方式3: 使用完整路径\n"
+                    "$ python C:\\Users\\Name\\Documents\\hello.py"
+                ),
+            },
+            {
+                "title": "4. 修改、保存、再运行的循环",
+                "explanation": (
+                    "编程是一个不断试错和改进的过程。"
+                    "修改代码 -> 保存文件（Ctrl+S）-> 运行程序 -> 观察结果 -> 继续修改。"
+                    "这个循环是编程学习的基本节奏，也是程序员日常工作的真实写照。"
+                    "不要怕出错，每个错误都是学习的机会。"
+                    "养成频繁保存的习惯，避免意外丢失代码。"
+                ),
+                "example": (
+                    "# 第一次运行\n"
+                    "print('Hello')\n"
+                    "\n"
+                    "# 修改后再次运行\n"
+                    "name = 'Python'\n"
+                    "print(f'Hello, {name}!')\n"
+                    "\n"
+                    "# 继续改进\n"
+                    "name = input('请输入你的名字: ')\n"
+                    "print(f'你好, {name}! 欢迎学习 Python!')"
+                ),
+            },
+            {
+                "title": "5. 添加注释让代码更易读",
+                "explanation": (
+                    "注释是写给人类看的说明文字，Python 会忽略它们。"
+                    "单行注释用 # 开头，# 后面的内容都是注释。"
+                    "好的注释能解释代码为什么这样写，而不是重复代码做了什么。"
+                    "注释也能临时禁用某行代码，方便调试。"
+                    "养成写注释的习惯，对你自己和阅读你代码的人都有帮助。"
+                ),
+                "example": (
+                    "# 这是单行注释\n"
+                    "print('Hello')  # 这也是注释\n"
+                    "\n"
+                    "# 下面的代码计算两数之和\n"
+                    "a = 10  # 第一个数\n"
+                    "b = 20  # 第二个数\n"
+                    "sum = a + b  # 计算和\n"
+                    "print(sum)  # 输出结果: 30\n"
+                    "\n"
+                    "# print('这行被注释掉了，不会执行')"
+                ),
+            },
+        ],
+        "exercise": {
+            "id": "first-python-file-ex-01",
+            "title": "创建并运行你的第一个 Python 文件",
+            "description": "使用 VS Code 创建一个名为 hello.py 的文件，编写程序打印你的姓名和一句自我介绍，保存后在终端中成功运行。",
+            "starter_code": "# hello.py\n# 在这里写下你的代码\nprint('你好，我是...')",
+            "test_cases": [
+                {"input": "", "expected_output": "包含自我介绍内容", "description": "成功创建并运行第一个 Python 文件"}
+            ],
+        },
+    },
     {
         "id": "indentation-rules",
         "language": "python",
@@ -2698,6 +3431,23 @@ def _planned_section(
     }
 
 
+def _ready_section(
+    section_id: str,
+    title: str,
+    summary: str,
+    estimated_minutes: int,
+) -> Dict[str, Any]:
+    """Create a section that links to an actual lesson."""
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "status": "ready",
+        "estimated_minutes": estimated_minutes,
+        "lesson_id": section_id,
+    }
+
+
 def _merge_sections(chapter: Dict[str, Any], sections: List[Dict[str, Any]], prepend: bool = False) -> None:
     existed = {section["id"] for section in chapter.get("sections", [])}
     fresh = [section for section in sections if section["id"] not in existed]
@@ -2720,12 +3470,12 @@ def _enrich_beginner_curriculum() -> None:
             "authority": "Python Software Foundation",
         },
         "sections": [
-            _planned_section("what-is-python", "Python 是什么，适合做什么", "理解 Python 的用途、解释型语言特点，以及它能解决哪些常见问题。", 12),
-            _planned_section("install-python-windows", "Windows 安装 Python", "下载官方安装包，勾选 PATH，验证 python --version 是否可用。", 20),
-            _planned_section("install-python-macos-linux", "macOS / Linux 环境说明", "了解 python3 命令、系统自带版本、包管理器安装和版本确认。", 18),
-            _planned_section("terminal-basics", "终端与命令行最小必备", "会打开终端、切换目录、运行命令，知道错误信息从哪里看。", 25),
-            _planned_section("vscode-python-extension", "VS Code 与 Python 插件配置", "安装 VS Code、Python 扩展，选择解释器，运行当前文件。", 25),
-            _planned_section("first-python-file", "第一个 .py 文件", "创建 hello.py，写 print，保存并运行，建立“写代码-运行-看结果”的闭环。", 20),
+            _ready_section("what-is-python", "Python 是什么，适合做什么", "理解 Python 的用途、解释型语言特点，以及它能解决哪些常见问题。", 12),
+            _ready_section("install-python-windows", "Windows 安装 Python", "下载官方安装包，勾选 PATH，验证 python --version 是否可用。", 20),
+            _ready_section("install-python-macos-linux", "macOS / Linux 环境说明", "了解 python3 命令、系统自带版本、包管理器安装和版本确认。", 18),
+            _ready_section("terminal-basics", "终端与命令行最小必备", "会打开终端、切换目录、运行命令，知道错误信息从哪里看。", 25),
+            _ready_section("vscode-python-extension", "VS Code 与 Python 插件配置", "安装 VS Code、Python 扩展，选择解释器，运行当前文件。", 25),
+            _ready_section("first-python-file", "第一个 .py 文件", "创建 hello.py，写 print，保存并运行，建立写代码-运行-看结果的闭环。", 20),
         ],
     }
 

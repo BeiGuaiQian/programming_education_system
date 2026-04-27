@@ -573,6 +573,38 @@ class AppStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def delete_conversation(self, username: str, conversation_id: str) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                DELETE FROM messages
+                WHERE conversation_id = ? AND username = ?
+                """,
+                (conversation_id, username),
+            )
+            cursor = conn.execute(
+                """
+                DELETE FROM conversations
+                WHERE id = ? AND username = ?
+                """,
+                (conversation_id, username),
+            )
+            return cursor.rowcount > 0
+
+    def update_conversation_title(self, username: str, conversation_id: str, title: str) -> bool:
+        now = self._now()
+        clean_title = (title or "新对话").strip()[:80] or "新对话"
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE conversations
+                SET title = ?, updated_at = ?
+                WHERE id = ? AND username = ?
+                """,
+                (clean_title, now, conversation_id, username),
+            )
+            return cursor.rowcount > 0
+
     def save_lesson_submission(
         self,
         username: str,
