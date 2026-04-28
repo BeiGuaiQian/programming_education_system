@@ -3,547 +3,653 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>学习中心 - 编程教育智能体系统</title>
+  <title>学习中心 - CodeMentor</title>
   <link rel="stylesheet" href="/static/edu_ide.css">
   <style>
-    :root {
-      --bg: linear-gradient(180deg, #f7fbff, #edf3f8);
-      --panel: rgba(255, 255, 255, 0.95);
-      --line: #d7e1ea;
-      --ink: #17232f;
-      --muted: #677788;
-      --accent: #1565c0;
-      --accent-2: #0f766e;
-      --ok: #1f8f4c;
-      --bad: #c53030;
-      --soft: #f4f8fb;
-      --code: #0f172a;
-      --shadow: 0 20px 48px rgba(20, 36, 52, 0.10);
-    }
-
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      background: #f9f8f6;
+      color: #3a3a3a;
       min-height: 100vh;
-      background:
-        radial-gradient(circle at top left, rgba(21, 101, 192, 0.10), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.08), transparent 28%),
-        var(--bg);
-      color: var(--ink);
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
-    .layout {
-      width: min(1280px, 100%);
-      margin: 0 auto;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
-      gap: 20px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid rgba(215, 225, 234, 0.95);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-    }
-
-    .sidebar {
-      padding: 20px;
-      display: grid;
-      grid-template-rows: auto auto 1fr auto;
-      gap: 16px;
-      min-height: calc(100vh - 40px);
-      max-height: calc(100vh - 40px);
-      overflow: hidden;
-    }
-
-    .title {
-      margin: 0;
-      font-size: 24px;
-      line-height: 1.25;
-    }
-
-    .meta {
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
-    .toolbar {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 11px 14px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform .15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    .primary {
-      background: linear-gradient(135deg, var(--accent), #2a7de1);
-      color: white;
-    }
-
-    .secondary {
-      background: linear-gradient(135deg, var(--accent-2), #139689);
-      color: white;
-    }
-
-    .ghost {
-      background: #eef5fb;
-      color: var(--ink);
-    }
-
-    .lesson-list {
-      overflow: auto;
-      display: grid;
-      gap: 14px;
-      padding-right: 4px;
-      min-height: 0;
-      align-content: start;
-    }
-
-    .chapter-block {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.72);
-      padding: 12px;
-      min-width: 0;
-    }
-
-    .chapter-head {
-      display: grid;
-      gap: 5px;
-      margin-bottom: 10px;
-    }
-
-    .chapter-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--ink);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .chapter-desc {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      word-break: break-word;
-    }
-
-    .section-list {
-      display: grid;
-      gap: 8px;
-      margin-left: 4px;
-      padding-left: 10px;
-      border-left: 2px solid #dce8f3;
-      min-width: 0;
-    }
-
-    .lesson-item {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fff;
-      padding: 12px;
-      text-align: left;
-      cursor: pointer;
-      position: relative;
-      width: 100%;
-      min-width: 0;
-      overflow: hidden;
-    }
-
-    .lesson-item.active {
-      border-color: rgba(21, 101, 192, 0.45);
-      background: #edf5ff;
-    }
-
-    .lesson-item.planned {
-      background: #f8fbfd;
-      color: #5f7285;
-    }
-
-    .lesson-item.planned::after {
-      content: "待补";
-      position: absolute;
-      right: 10px;
-      top: 10px;
-      font-size: 11px;
-      font-weight: 800;
-      color: #8a6424;
-      background: #fff4d6;
-      border-radius: 999px;
-      padding: 3px 7px;
-    }
-
-    .lesson-name {
-      font-weight: 700;
-      margin-bottom: 8px;
-      font-size: 14px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      padding-right: 42px;
-    }
-
-    .lesson-summary {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      padding-right: 38px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      word-break: break-word;
-    }
-
-    .lesson-foot {
-      color: #7c8da0;
-      font-size: 11px;
-      margin-top: 8px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .main {
-      min-height: calc(100vh - 40px);
-      display: grid;
-      grid-template-rows: auto 1fr;
-    }
-
-    .main-head {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--line);
+    /* ========== 顶部导航栏 ========== */
+    .topbar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 12px;
-    }
-
-    .main-title {
-      margin: 0 0 6px;
-      font-size: 24px;
-    }
-
-    .badge {
-      background: #edf7f6;
-      color: var(--accent-2);
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: 999px;
-      padding: 8px 12px;
-    }
-
-    .main-body {
-      overflow: auto;
-      padding: 24px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: white;
-      padding: 16px 18px;
-    }
-
-    .outline-card {
-      border: 1px dashed #c7d8e6;
-      border-radius: 18px;
-      background: linear-gradient(135deg, #f7fbff, #fffaf0);
-      padding: 18px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .outline-card h3 {
-      margin: 0;
-    }
-
-    .outline-meta {
-      color: var(--muted);
-      line-height: 1.7;
-    }
-
-    .panel h3 {
-      margin: 0 0 12px;
-      font-size: 17px;
-    }
-
-    .source-link {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-      word-break: break-all;
-    }
-
-    .selection-helper {
-      display: flex;
       justify-content: space-between;
+      border-bottom: 1px solid #e5e2dd;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.04), 0px 1px 2px rgba(0,0,0,0.02);
+      background: #ffffff;
+      padding: 0 32px;
+      height: 65px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
       align-items: center;
-      gap: 14px;
-      background:
-        linear-gradient(135deg, rgba(21, 101, 192, 0.08), rgba(15, 118, 110, 0.08)),
-        #ffffff;
+      column-gap: 12px;
     }
 
-    .selection-helper strong {
-      display: block;
-      margin-bottom: 4px;
-      color: var(--ink);
-    }
-
-    .panel ul {
-      margin: 0;
-      padding-left: 18px;
-      line-height: 1.8;
-      color: #2f3f4f;
-    }
-
-    .knowledge-grid {
-      display: grid;
-      gap: 12px;
-    }
-
-    .knowledge-card {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fbfdff;
-      padding: 14px 16px;
-    }
-
-    .knowledge-card h4 {
-      margin: 0 0 8px;
-      font-size: 15px;
-    }
-
-    .knowledge-card p {
-      margin: 0 0 10px;
-      color: #344657;
-      line-height: 1.7;
-      font-size: 14px;
-    }
-
-    .code-example {
-      background: var(--code);
-      color: #e5edf9;
-      border-radius: 12px;
-      padding: 12px;
-      font: 13px/1.7 Consolas, "Courier New", monospace;
-      white-space: pre-wrap;
-      overflow: auto;
-    }
-
-    .exercise-box {
-      display: grid;
-      gap: 12px;
-    }
-
-    .exercise-meta {
-      color: var(--muted);
-      line-height: 1.7;
-      font-size: 14px;
-    }
-
-    .editor-shell {
-      border: 1px solid #0b1220;
-      border-radius: 18px;
-      overflow: hidden;
-      background: #0b1220;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    }
-
-    .editor-toolbar {
+    .logo-icon {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      background: linear-gradient(180deg, #111b2e, #0b1220);
-      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-      flex-wrap: wrap;
-    }
-
-    .editor-toolbar-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .mini-btn {
-      padding: 8px 10px;
+      align-items: center;
+      justify-content: center;
       border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      background: rgba(255, 255, 255, 0.04);
-      color: #dbe7f5;
-      font-size: 12px;
-      font-weight: 700;
+      background: #6b9ab8;
+      width: 36px;
+      height: 36px;
+      color: #fff;
+      font-size: 18px;
     }
 
-    .mini-btn:hover {
-      transform: none;
-      background: rgba(255, 255, 255, 0.08);
+    .logo-text {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
     }
 
-    .editor-status {
-      color: #93a7bf;
-      font-size: 12px;
+    .topbar-nav {
       display: flex;
       align-items: center;
-      gap: 10px;
+      column-gap: 8px;
     }
 
-    textarea {
-      width: 100%;
-      border: 0;
-      border-radius: 0;
-      padding: 14px;
-      background: var(--code);
-      color: #e5edf9;
-      font: 14px/1.6 Consolas, "Courier New", monospace;
-      min-height: 280px;
-      resize: vertical;
-      outline: none;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .result {
-      border-radius: 14px;
-      padding: 12px 14px;
-      background: var(--soft);
-      color: var(--muted);
-      line-height: 1.7;
-      white-space: pre-wrap;
-    }
-
-    .result.ok {
-      background: #ecfdf3;
-      color: var(--ok);
-      border: 1px solid #b7ebc5;
-    }
-
-    .result.bad {
-      background: #fff5f5;
-      color: var(--bad);
-      border: 1px solid #fed7d7;
-    }
-
-    .feedback-panel {
-      display: grid;
-      gap: 12px;
-      color: var(--text);
-      white-space: normal;
-    }
-
-    .feedback-head {
+    .nav-btn {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .feedback-title {
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .score-pill {
-      border-radius: 999px;
-      padding: 4px 10px;
-      background: #ffffff;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .feedback-summary {
-      color: var(--muted);
-      line-height: 1.7;
-    }
-
-    .feedback-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .feedback-card {
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: #ffffff;
-      padding: 12px;
-    }
-
-    .feedback-card h4 {
-      margin: 0 0 8px;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 8px 16px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
       font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
     }
 
-    .feedback-card ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      line-height: 1.7;
+    .nav-btn:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
     }
 
-    .feedback-card li + li {
-      margin-top: 6px;
+    .nav-btn.active {
+      background: #e8f1f8;
+      color: #7aa8c7;
     }
 
-    .feedback-location {
-      color: var(--text);
-      font-weight: 700;
+    .nav-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
+    .topbar-user {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #5b8aaf, #4a5568);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* ========== 主体布局 ========== */
+    .learning-page {
+      display: flex;
+      align-items: flex-start;
+      background: #f9f8f6;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ========== 左侧章节目录 ========== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      border-right: 1px solid #e5e2dd;
+      background: #ffffff;
+      padding: 20px 16px 0;
+      width: 240px;
+      min-height: calc(100vh - 65px);
+      row-gap: 16px;
+    }
+
+    .sidebar-header {
+      padding: 0 8px;
+    }
+
+    .chapter-list {
+      row-gap: 8px;
+    }
+
+    .chapter-toggle {
+      padding: 8px 10px;
       font-size: 13px;
     }
 
-    th, td {
-      border: 1px solid var(--line);
-      padding: 8px 10px;
+    .section-list {
+      margin-left: 8px;
+      padding-left: 12px;
+      row-gap: 2px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 4px;
+    }
+
+    .sidebar-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .sidebar-subtitle {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .chapter-list {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .chapter-item {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+    }
+
+    .chapter-toggle {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+      border-radius: 8px;
+      padding: 10px 12px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
       text-align: left;
-      vertical-align: top;
-      word-break: break-word;
+      transition: background 0.2s ease;
     }
 
-    th {
-      background: #f8fbff;
-      color: #2f3f4f;
+    .chapter-toggle:hover {
+      background: #f9f8f6;
     }
 
+    .chapter-toggle svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    .chapter-toggle.collapsed svg {
+      transform: rotate(-90deg);
+    }
+
+    .section-list {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      margin-top: 6px;
+      margin-left: 12px;
+      border-left: 2px solid #e5e2dd;
+      padding-left: 16px;
+      row-gap: 4px;
+    }
+
+    .section-item {
+      display: flex;
+      align-items: center;
+      column-gap: 10px;
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .section-item:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    .section-item.active {
+      background: #e8f1f8;
+      color: #6b9ab8;
+      border-left: 3px solid #6b9ab8;
+      font-weight: 500;
+    }
+
+    .section-item.planned {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .section-item.planned:hover {
+      background: transparent;
+    }
+
+    .section-item svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .section-item.completed svg {
+      color: #7a9b87;
+    }
+
+    .section-item.pending svg {
+      color: #e5e2dd;
+    }
+
+    /* ========== 中间内容区 ========== */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      padding: 32px;
+      width: 600px;
+      min-height: calc(100vh - 65px);
+      row-gap: 32px;
+      overflow-y: auto;
+    }
+
+    .content-header {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .breadcrumb-item {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .breadcrumb-sep {
+      line-height: 16px;
+      color: #e5e2dd;
+      font-size: 12px;
+    }
+
+    .content-title-row {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .content-title {
+      line-height: 32px;
+      color: #3a3a3a;
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .difficulty-badge {
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(139, 163, 119, 0.2);
+      border-radius: 8px;
+      background: rgba(139, 163, 119, 0.1);
+      padding: 3px 9px;
+      color: #8ba377;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .content-source {
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .knowledge-section {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 16px;
+    }
+
+    .section-heading {
+      line-height: 28px;
+      color: #3a3a3a;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .section-text {
+      line-height: 23px;
+      color: rgba(58, 58, 58, 0.8);
+      font-size: 14px;
+    }
+
+    .operator-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    .knowledge-item {
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 3px solid #6b9ab8;
+    }
+
+    .knowledge-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+
+    .knowledge-explanation {
+      margin-bottom: 16px;
+    }
+
+    .knowledge-explanation p {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #4a4a4a;
+      margin-bottom: 8px;
+    }
+
+    .knowledge-explanation p:last-child {
+      margin-bottom: 0;
+    }
+
+    .knowledge-code-wrapper {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .knowledge-code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .operator-row {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      column-gap: 12px;
+    }
+
+    .operator-label {
+      width: 64px;
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .operator-code {
+      display: flex;
+      align-items: center;
+      border-radius: 8px;
+      background: #f0ede8;
+      padding: 6px 12px;
+      color: rgba(58, 58, 58, 0.8);
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 12px;
+    }
+
+    .code-section {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+    }
+
+    .code-section-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .code-block-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-self: stretch;
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      background: rgba(240, 237, 232, 0.5);
+      overflow: hidden;
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      border-bottom: 1px solid #e5e2dd;
+      background: rgba(240, 237, 232, 0.8);
+      padding: 14px 16px 10px;
+    }
+
+    .code-block-header span {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .code-block-body {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      padding: 18px 16px 38px;
+      overflow: hidden;
+    }
+
+    .code-block-body pre {
+      width: 100%;
+      line-height: 20px;
+      color: rgba(58, 58, 58, 0.9);
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+
+    /* ========== 右侧练习区 ========== */
+    .exercise-panel {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      border-left: 1px solid #e5e2dd;
+      background: #ffffff;
+      overflow: hidden;
+      flex: 1;
+      min-height: calc(100vh - 65px);
+    }
+
+    .exercise-header {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      border-bottom: 1px solid #e5e2dd;
+      padding: 24px 24px 0;
+      height: 104px;
+      row-gap: 8px;
+    }
+
+    .exercise-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .exercise-desc {
+      line-height: 23px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .exercise-body {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: center;
+      align-self: stretch;
+      padding: 24px;
+      flex: 1;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      justify-content: space-between;
+      height: 32px;
+    }
+
+    .editor-label {
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .editor-reset-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 6px 12px;
+      width: 74px;
+      min-width: 74px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .editor-reset-btn:hover {
+      background: #f9f8f6;
+    }
+
+    .editor-reset-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .code-textarea {
+      margin-top: 12px;
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      background: rgba(240, 237, 232, 0.3);
+      width: 100%;
+      min-height: 400px;
+      padding: 16px;
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #3a3a3a;
+      outline: none;
+      resize: vertical;
+    }
+
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 8px;
+      margin-top: 16px;
+      border-radius: 8px;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.1), 0px 1px 2px -1px rgba(0,0,0,0.1);
+      background: #6b9ab8;
+      padding: 10px 20px;
+      width: 100%;
+      border: none;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      background: #5a8aa7;
+    }
+
+    /* 划词提问浮动按钮 */
     .selection-popover {
       position: fixed;
       z-index: 20;
@@ -568,12 +674,14 @@
       background: transparent;
       color: inherit;
       font-size: inherit;
+      border: none;
+      cursor: pointer;
     }
 
     .selection-dock {
       position: fixed;
       right: 24px;
-      top: 24px;
+      top: 80px;
       z-index: 18;
       display: flex;
       align-items: center;
@@ -581,18 +689,20 @@
       border-radius: 999px;
       padding: 8px 12px;
       background: rgba(255, 255, 255, 0.94);
-      border: 1px solid var(--line);
+      border: 1px solid #e5e2dd;
       box-shadow: 0 12px 28px rgba(20, 36, 52, 0.12);
-      color: var(--muted);
+      color: #8a8a8a;
       font-size: 13px;
     }
 
     .selection-dock button {
       padding: 7px 10px;
       border-radius: 999px;
-      background: #edf7f6;
-      color: var(--accent-2);
+      background: #f0f8f5;
+      color: #7a9b87;
       font-size: 12px;
+      border: none;
+      cursor: pointer;
     }
 
     .ask-panel {
@@ -606,9 +716,9 @@
       grid-template-rows: auto auto auto 1fr;
       gap: 12px;
       padding: 16px;
-      border-radius: 22px;
+      border-radius: 16px;
       background: rgba(255, 255, 255, 0.98);
-      border: 1px solid var(--line);
+      border: 1px solid #e5e2dd;
       box-shadow: 0 24px 58px rgba(20, 36, 52, 0.22);
     }
 
@@ -626,14 +736,30 @@
     .ask-head h3 {
       margin: 0 0 4px;
       font-size: 17px;
+      color: #3a3a3a;
+    }
+
+    .ask-head .meta {
+      color: #8a8a8a;
+      font-size: 13px;
+    }
+
+    .ask-close-btn {
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f0f0f0;
+      color: #3a3a3a;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
     }
 
     .ask-selected {
-      border-left: 4px solid var(--accent);
+      border-left: 4px solid #6b9ab8;
       border-radius: 12px;
       background: #f3f8ff;
       padding: 10px 12px;
-      color: #2f3f4f;
+      color: #3a3a3a;
       font-size: 13px;
       line-height: 1.7;
       max-height: 120px;
@@ -641,30 +767,22 @@
       white-space: pre-wrap;
     }
 
-    .ask-selected-input {
+    .ask-selected-input,
+    .ask-input {
       width: 100%;
       min-height: 70px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
       padding: 10px 12px;
       background: #ffffff;
-      color: var(--ink);
+      color: #3a3a3a;
       font: 13px/1.7 Consolas, "Microsoft YaHei", sans-serif;
       resize: vertical;
       outline: none;
     }
 
     .ask-input {
-      width: 100%;
       min-height: 78px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 10px 12px;
-      background: #fbfdff;
-      color: var(--ink);
-      font: inherit;
-      resize: vertical;
-      outline: none;
     }
 
     .ask-actions {
@@ -673,133 +791,229 @@
       flex-wrap: wrap;
     }
 
+    .ask-actions button {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .ask-actions .primary {
+      background: #6b9ab8;
+      color: #fff;
+    }
+
+    .ask-actions .ghost {
+      background: #f0f0f0;
+      color: #3a3a3a;
+    }
+
     .ask-answer {
       overflow: auto;
       border-radius: 14px;
-      background: var(--soft);
+      background: #f9f8f6;
       padding: 12px;
-      color: #2f3f4f;
+      color: #3a3a3a;
       line-height: 1.75;
       white-space: pre-wrap;
       min-height: 88px;
+      font-size: 13px;
     }
 
-    @media (max-width: 1000px) {
-      .layout {
-        grid-template-columns: 1fr;
+    /* 结果反馈 */
+    .result-box {
+      margin-top: 16px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #f9f8f6;
+      color: #8a8a8a;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      width: 100%;
+    }
+
+    .result-box.ok {
+      background: #ecfdf3;
+      color: #1f8f4c;
+      border: 1px solid #b7ebc5;
+    }
+
+    .result-box.bad {
+      background: #fff5f5;
+      color: #c53030;
+      border: 1px solid #fed7d7;
+    }
+
+    /* 测试用例表格 */
+    .test-table-wrap {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #e5e2dd;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1200px) {
+      .content-area {
+        width: 480px;
       }
-      .sidebar,
-      .main {
-        min-height: auto;
-        max-height: none;
-        overflow: visible;
+    }
+
+    @media (max-width: 1100px) {
+      .content-area {
+        width: 400px;
       }
-      .feedback-grid {
-        grid-template-columns: 1fr;
-      }
-      .ask-panel {
-        right: 16px;
-        bottom: 16px;
-      }
-      .selection-helper {
-        align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+      .learning-page {
         flex-direction: column;
       }
-      .selection-dock {
-        right: 16px;
-        top: auto;
-        bottom: 16px;
+      .sidebar {
+        width: 100%;
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid #e5e2dd;
+      }
+      .content-area {
+        width: 100%;
+      }
+      .exercise-panel {
+        border-left: none;
+        border-top: 1px solid #e5e2dd;
       }
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="card sidebar">
-      <div>
-        <h1 class="title">学习中心</h1>
-        <div class="meta" id="userMeta">正在加载用户信息...</div>
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">&lt;/&gt;</div>
+      <span class="logo-text">CodeMentor</span>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/learn" class="nav-btn active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+        学习中心
+      </a>
+      <a href="/questions" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        题库
+      </a>
+      <a href="/chat" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI 助手
+      </a>
+      <a href="/profile" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        个人中心
+      </a>
+    </nav>
+    <div class="topbar-user">
+      <div class="user-avatar" id="userAvatar">U</div>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <div class="learning-page">
+    <!-- 左侧章节目录 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">课程目录</div>
+        <div class="sidebar-subtitle" id="courseSubtitle">Python 编程基础</div>
       </div>
-
-      <div class="toolbar">
-        <button class="primary" id="goChatBtn" type="button">去对话页</button>
-        <button class="ghost" id="goQuestionsBtn" type="button">题库大全</button>
-        <button class="ghost" id="goProfileBtn" type="button">个人中心</button>
-        <button class="ghost" id="logoutBtn" type="button">退出</button>
-      </div>
-
-      <section class="lesson-list" id="lessonList"></section>
-
-      <div class="meta">教材来源优先使用权威官方文档。当前先落地一个 Python 知识点，后续可按同结构扩展。</div>
+      <div class="chapter-list" id="chapterList"></div>
     </aside>
 
-    <main class="card main">
-      <header class="main-head">
-        <div>
-          <h2 class="main-title" id="lessonTitle">正在加载知识点...</h2>
-          <div class="meta" id="lessonSubTitle"></div>
+    <!-- 中间内容区 -->
+    <main class="content-area" id="contentArea">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <span class="breadcrumb-item" id="breadcrumbChapter">第1章</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-item" id="breadcrumbSection">运算符与表达式</span>
         </div>
-        <div class="badge" id="lessonBadge">Python</div>
-      </header>
+        <div class="content-title-row">
+          <h1 class="content-title" id="lessonTitle">运算符与表达式</h1>
+          <span class="difficulty-badge" id="difficultyBadge">基础</span>
+        </div>
+        <p class="content-source" id="lessonSource">教材来源: 《Python程序设计》第2章</p>
+      </div>
 
-      <section class="main-body">
-        <article class="panel">
-          <h3>教材来源</h3>
-          <div class="meta" id="lessonSource"></div>
-        </article>
+      <div class="knowledge-section" id="knowledgeSection">
+        <h2 class="section-heading" id="knowledgeSectionTitle">知识点</h2>
+        <p class="section-text" id="lessonSummary">请选择左侧课程开始学习。</p>
+        <div class="operator-grid" id="knowledgePoints"></div>
+      </div>
 
-        <article class="panel selection-helper">
-          <div class="meta">
-            <strong>划词提问</strong>
-            功能已加载。选中知识点讲解、示例代码或题目要求中的一段文字，然后点击“问问智能体”。如果弹窗没出现，也可以点右上角固定按钮。
-            <div id="selectionDebugStatus">脚本状态：等待加载...</div>
+      <div class="code-section">
+        <h2 class="code-section-title">示例代码</h2>
+        <div class="code-block-wrapper">
+          <div class="code-block-header">
+            <span>Python</span>
           </div>
-          <button class="primary" id="manualAskBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问选中的内容</button>
-        </article>
-
-        <article class="panel">
-          <h3>知识点讲解</h3>
-          <div class="meta" id="lessonSummary"></div>
-          <div class="knowledge-grid" id="knowledgePoints"></div>
-        </article>
-
-        <article class="panel exercise-box">
-          <h3 id="exerciseTitle">练习题</h3>
-          <div class="exercise-meta" id="exerciseDesc"></div>
-          <ul id="exerciseReq"></ul>
-          <div class="meta" id="exerciseExample"></div>
-
-          <h3>小型 IDE</h3>
-          <div class="editor-shell">
-            <div class="editor-toolbar">
-              <div class="editor-toolbar-group">
-                <button class="mini-btn" id="fillStarterBtn" type="button">填入模板</button>
-                <button class="mini-btn" id="restoreLastBtn" type="button">恢复上次提交</button>
-                <button class="mini-btn" id="clearEditorBtn" type="button">清空编辑器</button>
-              </div>
-              <div class="editor-status" id="editorStatus">Ctrl/Cmd + Enter 可快速提交</div>
-            </div>
-            <textarea id="codeEditor" spellcheck="false"></textarea>
+          <div class="code-block-body">
+            <pre id="codeExample">a = 10
+b = 3
+print(a + b)   # 13
+print(a // b)  # 3
+print(a % b)   # 1
+print(a ** b)  # 1000</pre>
           </div>
-
-          <div class="actions">
-            <button class="secondary" id="submitBtn" type="button">提交判题</button>
-          </div>
-
-          <div class="result" id="resultBox">请先阅读知识点并完成代码，然后点击“提交判题”。</div>
-          <div id="testTableWrap"></div>
-        </article>
-      </section>
+        </div>
+      </div>
     </main>
+
+    <!-- 右侧练习区 -->
+    <aside class="exercise-panel">
+      <div class="exercise-header">
+        <div class="exercise-title" id="exerciseTitle">练习: 计算圆的面积</div>
+        <div class="exercise-desc" id="exerciseDesc">编写一个程序,输入半径,计算并输出圆的面积。(π取3.14)</div>
+      </div>
+      <div class="exercise-body">
+        <div class="editor-header">
+          <span class="editor-label">代码编辑器</span>
+          <button class="editor-reset-btn" id="restoreLastBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            重置
+          </button>
+        </div>
+        <textarea class="code-textarea" id="codeEditor" spellcheck="false"></textarea>
+        <button class="submit-btn" id="submitBtn" type="button">提交判题</button>
+        <div class="result-box" id="resultBox">请先阅读知识点并完成代码，然后点击"提交判题"。</div>
+        <div class="test-table-wrap" id="testTableWrap"></div>
+      </div>
+    </aside>
   </div>
 
+  <!-- 划词提问 -->
   <div class="selection-popover" id="selectionPopover">
-    <button id="askSelectedBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问智能体</button>
+    <button type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问智能体</button>
   </div>
 
   <div class="selection-dock">
     <span>选中文字后可提问</span>
-    <button id="dockAskBtn" type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">划词提问</button>
+    <button type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">划词提问</button>
   </div>
 
   <section class="ask-panel" id="askPanel" aria-live="polite">
@@ -808,14 +1022,14 @@
         <h3>解释选中文本</h3>
         <div class="meta">不用离开当前知识点，直接把疑问问清楚。</div>
       </div>
-      <button class="mini-btn" id="closeAskPanelBtn" type="button">关闭</button>
+      <button class="ask-close-btn" id="closeAskPanelBtn" type="button">关闭</button>
     </div>
     <div class="ask-selected" id="askSelectedText"></div>
     <textarea class="ask-selected-input" id="askSelectedInput" placeholder="如果自动选中文本没有带过来，可以直接把要解释的文字粘贴到这里。"></textarea>
     <textarea class="ask-input" id="askQuestionInput" placeholder="可以补充你的问题，比如：这里的 return 和 print 有什么区别？"></textarea>
     <div class="ask-actions">
-      <button class="secondary" id="sendSelectionQuestionBtn" type="button" onclick="window.askLearningSelection && window.askLearningSelection(true)">发送问题</button>
-      <button class="ghost" id="quickExplainBtn" type="button" onclick="window.askLearningSelection && window.askLearningSelection(false)">直接解释这段</button>
+      <button class="primary" type="button" onclick="window.askLearningSelection && window.askLearningSelection(true)">发送问题</button>
+      <button class="ghost" type="button" onclick="window.askLearningSelection && window.askLearningSelection(false)">直接解释这段</button>
     </div>
     <div class="ask-answer" id="askAnswerBox">选中一段文字后，我会在这里解释它。</div>
   </section>
@@ -823,42 +1037,35 @@
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
   <script src="/static/edu_ide.js"></script>
   <script>
-    const userMeta = document.getElementById("userMeta");
-    const lessonListEl = document.getElementById("lessonList");
-    const lessonTitleEl = document.getElementById("lessonTitle");
-    const lessonSubTitleEl = document.getElementById("lessonSubTitle");
-    const lessonBadgeEl = document.getElementById("lessonBadge");
-    const lessonSourceEl = document.getElementById("lessonSource");
-    const lessonSummaryEl = document.getElementById("lessonSummary");
-    const knowledgePointsEl = document.getElementById("knowledgePoints");
-    const exerciseTitleEl = document.getElementById("exerciseTitle");
-    const exerciseDescEl = document.getElementById("exerciseDesc");
-    const exerciseReqEl = document.getElementById("exerciseReq");
-    const exerciseExampleEl = document.getElementById("exerciseExample");
+    // ===== 变量定义 =====
+    const userAvatar = document.getElementById("userAvatar");
+    const courseSubtitle = document.getElementById("courseSubtitle");
+    const chapterList = document.getElementById("chapterList");
+    const breadcrumbChapter = document.getElementById("breadcrumbChapter");
+    const breadcrumbSection = document.getElementById("breadcrumbSection");
+    const lessonTitle = document.getElementById("lessonTitle");
+    const difficultyBadge = document.getElementById("difficultyBadge");
+    const lessonSource = document.getElementById("lessonSource");
+    const lessonSummary = document.getElementById("lessonSummary");
+    const knowledgeSectionTitle = document.getElementById("knowledgeSectionTitle");
+    const knowledgePoints = document.getElementById("knowledgePoints");
+    const codeExample = document.getElementById("codeExample");
+    const exerciseTitle = document.getElementById("exerciseTitle");
+    const exerciseDesc = document.getElementById("exerciseDesc");
     const codeEditor = document.getElementById("codeEditor");
-    const fillStarterBtn = document.getElementById("fillStarterBtn");
+
+    // ===== 工具函数 =====
+    const escapeHTML = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const restoreLastBtn = document.getElementById("restoreLastBtn");
-    const clearEditorBtn = document.getElementById("clearEditorBtn");
-    const editorStatus = document.getElementById("editorStatus");
     const submitBtn = document.getElementById("submitBtn");
     const resultBox = document.getElementById("resultBox");
     const testTableWrap = document.getElementById("testTableWrap");
-    const goChatBtn = document.getElementById("goChatBtn");
-    const goQuestionsBtn = document.getElementById("goQuestionsBtn");
-    const goProfileBtn = document.getElementById("goProfileBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const manualAskBtn = document.getElementById("manualAskBtn");
-    const dockAskBtn = document.getElementById("dockAskBtn");
-    const selectionDebugStatus = document.getElementById("selectionDebugStatus");
     const selectionPopover = document.getElementById("selectionPopover");
-    const askSelectedBtn = document.getElementById("askSelectedBtn");
     const askPanel = document.getElementById("askPanel");
     const closeAskPanelBtn = document.getElementById("closeAskPanelBtn");
     const askSelectedText = document.getElementById("askSelectedText");
     const askSelectedInput = document.getElementById("askSelectedInput");
     const askQuestionInput = document.getElementById("askQuestionInput");
-    const sendSelectionQuestionBtn = document.getElementById("sendSelectionQuestionBtn");
-    const quickExplainBtn = document.getElementById("quickExplainBtn");
     const askAnswerBox = document.getElementById("askAnswerBox");
 
     let accessToken = localStorage.getItem("pes_token");
@@ -870,14 +1077,10 @@
     let activeSelectedText = "";
     let activeSelectionContext = "";
     let lessonEnteredAt = Date.now();
+    let cachedChapters = [];  // 缓存章节数据用于重新渲染
     let eduIDE = null;
 
-    selectionDebugStatus.textContent = "脚本状态：划词提问脚本已加载";
-
-    if (!accessToken || !refreshToken) {
-      window.location.href = "/";
-    }
-
+    // ===== 认证相关 =====
     const saveAuth = (data) => {
       accessToken = data.access_token;
       refreshToken = data.refresh_token;
@@ -889,12 +1092,19 @@
     };
 
     const clearAuth = () => {
+      accessToken = null;
+      refreshToken = null;
       localStorage.removeItem("pes_token");
       localStorage.removeItem("pes_refresh_token");
       localStorage.removeItem("pes_username");
       localStorage.removeItem("pes_expires_at");
       localStorage.removeItem("pes_refresh_expires_at");
     };
+
+    // 检查 token 是否存在或过期
+    const expiresAt = localStorage.getItem("pes_expires_at");
+    const isExpired = expiresAt ? new Date(expiresAt) <= new Date() : false;
+    const needsLogin = !accessToken || !refreshToken || isExpired;
 
     const refreshAuth = async () => {
       const response = await fetch("/auth/refresh", {
@@ -904,6 +1114,7 @@
       });
       const data = await response.json();
       if (!response.ok) {
+        clearAuth();
         throw new Error(data.detail || "登录已过期");
       }
       saveAuth(data);
@@ -911,386 +1122,93 @@
     };
 
     const authedFetch = async (url, options = {}, retry = true) => {
-      const headers = {
-        ...(options.headers || {}),
-        Authorization: `Bearer ${accessToken}`
-      };
+      const headers = { ...(options.headers || {}) };
+      // 只在有 token 时添加 Authorization 头
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
       const response = await fetch(url, { ...options, headers });
-      if (response.status === 401 && retry) {
-        await refreshAuth();
-        return authedFetch(url, options, false);
+      if (response.status === 401 && retry && accessToken) {
+        try {
+          await refreshAuth();
+          return await authedFetch(url, options, false);
+        } catch (err) {
+          // 刷新失败，已经清除认证并跳转
+          return;
+        }
       }
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || "请求失败");
-      }
+      if (!response.ok) throw new Error(data.detail || "请求失败");
       return data;
     };
 
-    const trackLearningEvent = (eventType, targetType, targetId, durationSeconds = null, metadata = {}) => {
-      if (!accessToken) return;
-      fetch("/analytics/events", {
-        method: "POST",
-        keepalive: true,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          event_type: eventType,
-          target_type: targetType,
-          target_id: targetId,
-          duration_seconds: durationSeconds,
-          metadata
-        })
-      }).catch(() => {});
-    };
+    // ===== 章节渲染 =====
+    const renderChapters = (chapters) => {
+      chapterList.innerHTML = "";
+      for (const chapter of chapters) {
+        const chapterItem = document.createElement("div");
+        chapterItem.className = "chapter-item";
 
-    const flushLessonDwell = () => {
-      if (!currentLessonId) return;
-      const durationSeconds = Math.round((Date.now() - lessonEnteredAt) / 1000);
-      if (durationSeconds < 3) return;
-      trackLearningEvent("lesson_dwell", "lesson", currentLessonId, durationSeconds, {
-        title: currentLessonDetail ? currentLessonDetail.title : "",
-        page: "learn"
-      });
-      lessonEnteredAt = Date.now();
-    };
-
-    const updateEditorStatus = () => {
-      const value = getEditorCode();
-      const lines = value.split("\n").length;
-      const chars = value.length;
-      editorStatus.textContent = `共 ${lines} 行 / ${chars} 字符，Ctrl/Cmd + Enter 可快速提交`;
-    };
-
-    const getEditorCode = () => eduIDE ? eduIDE.getValue() : codeEditor.value;
-    const setEditorCode = (value) => {
-      if (eduIDE) eduIDE.setValue(value || "");
-      else codeEditor.value = value || "";
-      updateEditorStatus();
-    };
-    const focusEditor = () => {
-      if (eduIDE) eduIDE.focus();
-      else codeEditor.focus();
-    };
-
-    const escapeHTML = (value) => String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
-    const renderList = (items, emptyText) => {
-      if (!items || !items.length) {
-        return `<ul><li>${escapeHTML(emptyText)}</li></ul>`;
-      }
-      return `<ul>${items.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`;
-    };
-
-    const renderFeedback = (payload, latest = null) => {
-      const structured = payload.structured_feedback;
-      const passed = Boolean(payload.passed);
-      const score = payload.score ?? 0;
-      resultBox.className = `result ${passed ? "ok" : "bad"}`;
-
-      if (!structured) {
-        const prefix = latest ? `上次提交：${latest.submitted_at}\n` : `判题结果：${passed ? "通过" : "未通过"}\n`;
-        resultBox.textContent = `${prefix}得分：${score}\n反馈：${payload.feedback || "暂无详细反馈"}`;
-        if (eduIDE) {
-          eduIDE.markSubmitResult(passed);
-          eduIDE.renderSubmitFeedback(payload.ide_feedback);
-        }
-        return;
-      }
-
-      const errorItems = (structured.error_locations || []).map(item => {
-        const position = item.line ? `第 ${item.line} 行${item.column ? ` / 第 ${item.column} 列` : ""}：` : "";
-        const suggestion = item.suggestion ? ` 建议：${item.suggestion}` : "";
-        return `${position}${item.message || ""}${suggestion}`;
-      });
-
-      resultBox.innerHTML = `
-        <div class="feedback-panel">
-          <div class="feedback-head">
-            <div class="feedback-title">${passed ? "这次通过了" : "这次还没通过，我们看一下哪里需要改"}</div>
-            <div class="score-pill">得分：${escapeHTML(score)}</div>
-          </div>
-          <div class="feedback-summary">${escapeHTML(structured.summary || payload.feedback || "")}</div>
-          <div class="feedback-grid">
-            <div class="feedback-card">
-              <h4>错误位置</h4>
-              ${renderList(errorItems, passed ? "没有发现阻塞错误。" : "暂时没有定位到具体行，请先看测试结果。")}
-            </div>
-            <div class="feedback-card">
-              <h4>需要修改的要点</h4>
-              ${renderList(structured.fix_points || [], "当前没有必须修改的点。")}
-            </div>
-            <div class="feedback-card">
-              <h4>代码风格提升建议</h4>
-              ${renderList(structured.style_suggestions || [], "保持现在的清晰写法就很好。")}
-            </div>
-            <div class="feedback-card">
-              <h4>已经做得不错的地方</h4>
-              ${renderList(structured.positive_notes || [], "完成提交本身就是一个好的开始。")}
-            </div>
-          </div>
-        </div>
-      `;
-      if (eduIDE) {
-        eduIDE.markSubmitResult(passed);
-        eduIDE.renderSubmitFeedback(payload.ide_feedback);
-      }
-    };
-
-    const hideSelectionPopover = () => {
-      selectionPopover.classList.remove("show");
-    };
-
-    const clearActiveSelection = () => {
-      activeSelectedText = "";
-      activeSelectionContext = "";
-    };
-
-    const normalizeSelectionText = (text) => text.replace(/\s+/g, " ").trim();
-
-    const getSelectionContext = (selection) => {
-      const node = selection.anchorNode;
-      const element = node && (node.nodeType === Node.TEXT_NODE ? node.parentElement : node);
-      const container = element && element.closest(".panel, .knowledge-card, .code-example");
-      return normalizeSelectionText((container && container.textContent) || "");
-    };
-
-    const captureCurrentSelection = (options = {}) => {
-      const preserveExisting = Boolean(options.preserveExisting);
-      if (document.activeElement === codeEditor) {
-        const selectedCode = codeEditor.value
-          .slice(codeEditor.selectionStart, codeEditor.selectionEnd)
-          .trim();
-        if (selectedCode) {
-          activeSelectedText = selectedCode.slice(0, 1200);
-          activeSelectionContext = codeEditor.value.slice(0, 2500);
-          selectionDebugStatus.textContent = `脚本状态：已从 IDE 捕获 ${activeSelectedText.length} 个字符，可点击提问`;
-          return true;
-        }
-      }
-
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-        if (!preserveExisting) clearActiveSelection();
-        return false;
-      }
-
-      const selectedText = normalizeSelectionText(selection.toString());
-      if (!selectedText || selectedText.length < 2 || !document.querySelector(".main-body").contains(selection.anchorNode)) {
-        if (!preserveExisting) clearActiveSelection();
-        return false;
-      }
-
-      const activeElement = document.activeElement;
-      if (activeElement && ["TEXTAREA", "INPUT"].includes(activeElement.tagName)) {
-        if (!preserveExisting) clearActiveSelection();
-        return false;
-      }
-
-      activeSelectedText = selectedText.slice(0, 1200);
-      activeSelectionContext = getSelectionContext(selection).slice(0, 2500);
-      selectionDebugStatus.textContent = `脚本状态：已捕获 ${activeSelectedText.length} 个字符，可点击提问`;
-      return true;
-    };
-
-    const updateSelectionPopover = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-        hideSelectionPopover();
-        clearActiveSelection();
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      if (!rect || (rect.width === 0 && rect.height === 0)) {
-        hideSelectionPopover();
-        return;
-      }
-
-      if (!captureCurrentSelection()) {
-        hideSelectionPopover();
-        return;
-      }
-
-      selectionPopover.style.left = `${Math.min(window.innerWidth - 140, Math.max(12, rect.left + rect.width / 2 - 52))}px`;
-      selectionPopover.style.top = `${Math.max(12, rect.top - 46)}px`;
-      selectionPopover.classList.add("show");
-    };
-
-    const openAskPanel = () => {
-      captureCurrentSelection({ preserveExisting: true });
-      if (!activeSelectedText) {
-        askPanel.classList.add("open");
-        askSelectedText.textContent = "还没有选中文本。请先在知识点讲解、示例代码或题目要求里选中一小段内容。";
-        askSelectedInput.value = "";
-        askAnswerBox.textContent = "选中一段文字后，我就能结合当前知识点解释它。如果你已经选中了但这里仍然提示没有选中，请先点击页面空白处，再重新拖选一次。";
-        askQuestionInput.value = "";
-        return;
-      }
-      if (!activeSelectedText) return;
-      askSelectedText.textContent = activeSelectedText;
-      askSelectedInput.value = activeSelectedText;
-      askQuestionInput.value = "";
-      askAnswerBox.textContent = "可以直接发送，也可以补充一句你具体想问什么。";
-      askPanel.classList.add("open");
-      hideSelectionPopover();
-      askQuestionInput.focus();
-    };
-
-    const askSelection = async (useCustomQuestion) => {
-      const textToAsk = (askSelectedInput.value || activeSelectedText).trim();
-      if (!currentLessonId) {
-        askAnswerBox.textContent = "课程还没有加载完成，请稍等一下再试。";
-        return;
-      }
-      if (!textToAsk) {
-        askPanel.classList.add("open");
-        askAnswerBox.textContent = "请先选中一段文字，或者直接把要解释的文本填到上面的输入框里。";
-        askSelectedInput.focus();
-        return;
-      }
-      activeSelectedText = textToAsk.slice(0, 1200);
-      sendSelectionQuestionBtn.disabled = true;
-      quickExplainBtn.disabled = true;
-      sendSelectionQuestionBtn.textContent = "思考中...";
-      askAnswerBox.textContent = "智能体正在结合当前知识点解释这段内容，请稍等。";
-      try {
-        const requestedText = activeSelectedText;
-        const payload = await authedFetch("/learning/ask-selection", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lesson_id: currentLessonId,
-            selected_text: requestedText,
-            question: useCustomQuestion ? askQuestionInput.value : "",
-            surrounding_context: activeSelectionContext || (currentLessonDetail ? currentLessonDetail.summary : "")
-          })
-        });
-        const sourceNote = payload.used_local_fallback
-          ? "\n\n提示：智能体已被调用，但当前大模型不可用，所以先使用本地学习规则给出解释。"
-          : "";
-        askSelectedText.textContent = payload.selected_text || requestedText;
-        askAnswerBox.textContent = `${payload.response || "智能体暂时没有返回解释，可以换个问法再试一次。"}${sourceNote}`;
-        trackLearningEvent("selection_ask", "lesson", currentLessonId, null, {
-          selected_text: requestedText.slice(0, 120),
-          has_custom_question: Boolean(useCustomQuestion && askQuestionInput.value.trim())
-        });
-      } catch (error) {
-        askAnswerBox.textContent = `提问失败：${error.message}`;
-      } finally {
-        sendSelectionQuestionBtn.disabled = false;
-        quickExplainBtn.disabled = false;
-        sendSelectionQuestionBtn.textContent = "发送问题";
-      }
-    };
-
-    window.openLearningAskPanel = openAskPanel;
-    window.askLearningSelection = askSelection;
-
-    const sectionStatusText = (status) => status === "ready" ? "可学习" : "内容待补";
-
-    const renderLessons = (items, chapters = []) => {
-      lessonListEl.innerHTML = "";
-      if (chapters && chapters.length) {
-        for (const chapter of chapters) {
-          const block = document.createElement("section");
-          block.className = "chapter-block";
-          block.innerHTML = `
-            <div class="chapter-head">
-              <div class="chapter-title">${escapeHTML(chapter.title)}</div>
-              <div class="chapter-desc">${escapeHTML(chapter.description)}</div>
-            </div>
-            <div class="section-list"></div>
-          `;
-          const sectionList = block.querySelector(".section-list");
-          for (const section of chapter.sections || []) {
-            const lessonId = section.lesson_id || section.id;
-            const isReady = section.status === "ready" && section.lesson_id;
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = `lesson-item ${isReady ? "ready" : "planned"}${lessonId === currentCatalogId ? " active" : ""}`;
-            button.innerHTML = `
-              <div class="lesson-name">${escapeHTML(section.title)}</div>
-              <div class="lesson-summary">${escapeHTML(section.summary)}</div>
-              <div class="lesson-foot">${sectionStatusText(section.status)} · 预计 ${escapeHTML(section.estimated_minutes || "-")} 分钟</div>
-            `;
-            button.addEventListener("click", () => {
-              if (isReady) {
-                loadLesson(section.lesson_id);
-                return;
-              }
-              renderPlannedLesson(section, chapter);
-              renderLessons(items, chapters);
-            });
-            sectionList.appendChild(button);
-          }
-          lessonListEl.appendChild(block);
-        }
-        return;
-      }
-
-      for (const item of items) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `lesson-item${item.id === currentCatalogId ? " active" : ""}`;
-        button.innerHTML = `
-          <div class="lesson-name">${escapeHTML(item.title)}</div>
-          <div class="lesson-summary">${escapeHTML(item.summary)}</div>
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "chapter-toggle";
+        toggleBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          <span>${escapeHTML(chapter.title)}</span>
         `;
-        button.addEventListener("click", () => loadLesson(item.id));
-        lessonListEl.appendChild(button);
+
+        const sectionList = document.createElement("div");
+        sectionList.className = "section-list";
+
+        for (const section of chapter.sections || []) {
+          const sectionBtn = document.createElement("button");
+          const isCompleted = section.status === "completed";
+          const isActive = section.lesson_id === currentCatalogId;
+          const isPlanned = section.status === "planned" || !section.lesson_id;
+          
+          sectionBtn.className = "section-item";
+          if (isActive) sectionBtn.classList.add("active");
+          if (isCompleted) sectionBtn.classList.add("completed");
+          if (isPlanned) sectionBtn.classList.add("planned");
+
+          sectionBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              ${isCompleted
+                ? '<path d="M20 6L9 17l-5-5"/>'
+                : isPlanned
+                  ? '<path d="M12 5v14M5 12h14"/>'
+                  : '<circle cx="12" cy="12" r="10"/>'}
+            </svg>
+            <span>${escapeHTML(section.title)}</span>
+            ${isPlanned ? '<span style="margin-left:auto;font-size:11px;color:#999;">(即将上线)</span>' : ''}
+          `;
+
+          sectionBtn.addEventListener("click", () => {
+            if (section.lesson_id && !isPlanned) {
+              loadLesson(section.lesson_id);
+            } else if (isPlanned) {
+              // 显示提示
+              lessonTitle.textContent = "课程准备中";
+              lessonSummary.textContent = `「${section.title}」课程正在准备中，敬请期待！`;
+              knowledgePoints.innerHTML = '';
+              codeExample.textContent = '';
+            }
+          });
+
+          sectionList.appendChild(sectionBtn);
+        }
+
+        toggleBtn.addEventListener("click", () => {
+          toggleBtn.classList.toggle("collapsed");
+          sectionList.style.display = sectionList.style.display === "none" ? "flex" : "none";
+        });
+
+        chapterItem.appendChild(toggleBtn);
+        chapterItem.appendChild(sectionList);
+        chapterList.appendChild(chapterItem);
       }
     };
 
-    const renderPlannedLesson = (section, chapter) => {
-      flushLessonDwell();
-      currentLessonId = null;
-      currentCatalogId = section.id;
-      currentLessonDetail = null;
-      latestSubmissionCode = "";
-      setEditorCode("");
-      updateEditorStatus();
-
-      lessonTitleEl.textContent = section.title;
-      lessonSubTitleEl.textContent = `${chapter.title} ｜ ${sectionStatusText(section.status)}`;
-      lessonBadgeEl.textContent = "目录";
-      lessonSummaryEl.textContent = section.summary;
-      lessonSourceEl.innerHTML = `
-        <div>${escapeHTML(chapter.source.title)}（${escapeHTML(chapter.source.authority)}）</div>
-        <a class="source-link" href="${escapeHTML(chapter.source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(chapter.source.url)}</a>
-      `;
-
-      knowledgePointsEl.innerHTML = `
-        <div class="outline-card">
-          <h3>小节占位</h3>
-          <div class="outline-meta">
-            这一小节已经进入学习路线，但暂时还没有填充详细讲解、示例和练习。
-            后续我们可以按这个目录逐节补内容，每节都继续配套例题、小型 IDE 和智能体判题。
-          </div>
-          <div class="outline-meta">建议学习顺序：先完成本章前面的小节，再进入当前小节。</div>
-        </div>
-      `;
-      exerciseTitleEl.textContent = "练习题待补";
-      exerciseDescEl.textContent = "这一小节的习题稍后会按照当前知识点生成规则补齐。";
-      exerciseReqEl.innerHTML = "<li>暂不需要提交，本页先用于确认目录结构和学习路径。</li>";
-      exerciseExampleEl.textContent = `预计学习时间：${section.estimated_minutes || "-"} 分钟`;
-      resultBox.className = "result";
-      resultBox.textContent = "这是一个目录预览节点。等内容补齐后，这里会恢复为可提交判题的 IDE。";
-      testTableWrap.innerHTML = "";
-      trackLearningEvent("lesson_outline_open", "lesson_outline", section.id, null, {
-        chapter_id: chapter.id,
-        title: section.title
-      });
-    };
-
+    // ===== 内容渲染 =====
     const renderLessonDetail = (payload) => {
       const lesson = payload.lesson;
       const exercise = lesson.exercise;
@@ -1298,117 +1216,108 @@
       currentLessonId = lesson.id;
       currentCatalogId = lesson.id;
 
-      lessonTitleEl.textContent = lesson.title;
-      lessonSubTitleEl.textContent = `难度：${lesson.difficulty} ｜ 主题：${lesson.topic}`;
-      lessonBadgeEl.textContent = lesson.language.toUpperCase();
-      lessonSummaryEl.textContent = lesson.summary;
-      lessonSourceEl.innerHTML = `
-        <div>${escapeHTML(lesson.source.title)}（${escapeHTML(lesson.source.authority)}）</div>
-        <a class="source-link" href="${escapeHTML(lesson.source.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(lesson.source.url)}</a>
-      `;
+      lessonTitle.textContent = lesson.title;
+      difficultyBadge.textContent = lesson.difficulty;
+      lessonSource.textContent = `教材来源: ${lesson.source.title}（${lesson.source.authority}）`;
+      lessonSummary.textContent = lesson.summary;
+      knowledgeSectionTitle.textContent = lesson.title;
 
-      knowledgePointsEl.innerHTML = "";
+      // 知识点
+      knowledgePoints.innerHTML = "";
       for (const kp of lesson.knowledge_points) {
-        const card = document.createElement("div");
-        card.className = "knowledge-card";
-        card.innerHTML = `
-          <h4>${escapeHTML(kp.title)}</h4>
-          <p>${escapeHTML(kp.explanation)}</p>
-          <div class="code-example">${escapeHTML(kp.example)}</div>
-        `;
-        knowledgePointsEl.appendChild(card);
+        const kpItem = document.createElement("div");
+        kpItem.className = "knowledge-item";
+        
+        // 标题
+        const kpTitle = document.createElement("h3");
+        kpTitle.className = "knowledge-title";
+        kpTitle.textContent = kp.title;
+        kpItem.appendChild(kpTitle);
+        
+        // 解释说明（将换行符转换为段落）
+        if (kp.explanation) {
+          const explanationDiv = document.createElement("div");
+          explanationDiv.className = "knowledge-explanation";
+          // 按段落分割并创建p标签
+          const paragraphs = kp.explanation.split('\n').filter(p => p.trim());
+          paragraphs.forEach(para => {
+            const p = document.createElement("p");
+            p.textContent = para.trim();
+            explanationDiv.appendChild(p);
+          });
+          kpItem.appendChild(explanationDiv);
+        }
+        
+        // 代码示例
+        if (kp.example) {
+          const codeWrapper = document.createElement("div");
+          codeWrapper.className = "knowledge-code-wrapper";
+          const pre = document.createElement("pre");
+          pre.className = "knowledge-code";
+          pre.textContent = kp.example;
+          codeWrapper.appendChild(pre);
+          kpItem.appendChild(codeWrapper);
+        }
+        
+        knowledgePoints.appendChild(kpItem);
       }
 
-      exerciseTitleEl.textContent = `练习：${exercise.title}`;
-      exerciseDescEl.textContent = exercise.description;
-      exerciseReqEl.innerHTML = "";
-      for (const req of exercise.requirements) {
-        const li = document.createElement("li");
-        li.textContent = req;
-        exerciseReqEl.appendChild(li);
+      // 代码示例区域显示第一个知识点的示例
+      if (lesson.knowledge_points.length > 0 && lesson.knowledge_points[0].example) {
+        codeExample.textContent = lesson.knowledge_points[0].example;
       }
-      exerciseExampleEl.textContent = `示例：${exercise.examples.map(e => `${e.input} => ${e.output}`).join("；")}`;
+
+      // 练习
+      exerciseTitle.textContent = `练习: ${exercise.title}`;
+      exerciseDesc.textContent = exercise.description;
+
+      // 编辑器代码
       latestSubmissionCode = (payload.latest_submission && payload.latest_submission.code) || "";
-      setEditorCode(latestSubmissionCode || exercise.starter_code || "");
-      updateEditorStatus();
+      codeEditor.value = latestSubmissionCode || exercise.starter_code || "";
 
+      // 结果
       if (payload.latest_submission) {
         const latest = payload.latest_submission;
-        renderFeedback({
-          passed: latest.passed,
-          score: latest.score,
-          feedback: latest.feedback,
-          structured_feedback: latest.structured_feedback || null
-        }, latest);
+        resultBox.className = `result-box ${latest.passed ? "ok" : "bad"}`;
+        resultBox.textContent = `判题结果：${latest.passed ? "通过" : "未通过"}\n得分：${latest.score}\n反馈：${latest.feedback || "暂无详细反馈"}`;
       } else {
-        resultBox.className = "result";
-        resultBox.textContent = "请先阅读知识点并完成代码，然后点击“提交判题”。";
+        resultBox.className = "result-box";
+        resultBox.textContent = "请先阅读知识点并完成代码，然后点击\"提交判题\"。";
       }
       testTableWrap.innerHTML = "";
     };
 
-    const renderTestTable = (testResults) => {
-      if (!testResults || !testResults.length) {
-        testTableWrap.innerHTML = "";
-        return;
-      }
-      const rows = testResults.map(item => `
-        <tr>
-          <td>${escapeHTML(item.call)}</td>
-          <td>${escapeHTML(item.expected)}</td>
-          <td>${escapeHTML(item.actual)}</td>
-          <td>${item.passed ? "通过" : "未通过"}</td>
-        </tr>
-      `).join("");
-      testTableWrap.innerHTML = `
-        <table>
-          <thead>
-            <tr><th>测试调用</th><th>期望</th><th>实际</th><th>结果</th></tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `;
-    };
-
-    const loadLesson = async (lessonId) => {
-      if (currentLessonId && currentLessonId !== lessonId) {
-        flushLessonDwell();
-      }
-      const detail = await authedFetch(`/learning/lessons/${lessonId}`);
-      renderLessonDetail(detail);
-      lessonEnteredAt = Date.now();
-      trackLearningEvent("lesson_open", "lesson", lessonId, null, {
-        title: detail.lesson ? detail.lesson.title : ""
-      });
-      const lessons = await authedFetch("/learning/lessons");
-      renderLessons(lessons.items || [], lessons.chapters || []);
-    };
-
+    // ===== 提交判题 =====
     const submitLesson = async () => {
       if (!currentLessonId) return;
       submitBtn.disabled = true;
       submitBtn.textContent = "判题中...";
-      resultBox.className = "result";
+      resultBox.className = "result-box";
       resultBox.textContent = "正在调用智能体判题，请稍候...";
       testTableWrap.innerHTML = "";
+
       try {
         const payload = await authedFetch("/learning/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lesson_id: currentLessonId,
-            code: getEditorCode()
-          })
+          body: JSON.stringify({ lesson_id: currentLessonId, code: codeEditor.value })
         });
-        latestSubmissionCode = getEditorCode();
-        renderFeedback(payload);
-        renderTestTable((payload.hidden_test_result || {}).test_results || []);
-        trackLearningEvent("lesson_submit_client", "lesson", currentLessonId, null, {
-          passed: payload.passed,
-          score: payload.score
-        });
+        latestSubmissionCode = codeEditor.value;
+        resultBox.className = `result-box ${payload.passed ? "ok" : "bad"}`;
+        resultBox.textContent = `判题结果：${payload.passed ? "通过" : "未通过"}\n得分：${payload.score}\n反馈：${payload.feedback || "暂无详细反馈"}`;
+
+        // 测试用例表格
+        const testResults = (payload.hidden_test_result || {}).test_results || [];
+        if (testResults.length > 0) {
+          const rows = testResults.map(item => `
+            <tr><td>${escapeHTML(item.call)}</td><td>${escapeHTML(item.expected)}</td><td>${escapeHTML(item.actual)}</td><td>${item.passed ? "通过" : "未通过"}</td></tr>
+          `).join("");
+          testTableWrap.innerHTML = `
+            <table><thead><tr><th>测试调用</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+            <tbody>${rows}</tbody></table>`;
+        }
       } catch (error) {
-        resultBox.className = "result bad";
+        resultBox.className = "result-box bad";
         resultBox.textContent = `提交失败：${error.message}`;
       } finally {
         submitBtn.disabled = false;
@@ -1416,138 +1325,166 @@
       }
     };
 
-    codeEditor.addEventListener("input", updateEditorStatus);
-    codeEditor.addEventListener("keydown", (event) => {
-      if (event.key === "Tab") {
-        event.preventDefault();
-        const start = codeEditor.selectionStart;
-        const end = codeEditor.selectionEnd;
-        codeEditor.value = `${codeEditor.value.slice(0, start)}    ${codeEditor.value.slice(end)}`;
-        codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
-        updateEditorStatus();
+    // ===== 划词提问 =====
+    console.log('Initializing selection popover...');
+    console.log('selectionPopover:', selectionPopover);
+    console.log('askPanel:', askPanel);
+
+    const hideSelectionPopover = () => {
+      console.log('Hiding popover');
+      selectionPopover.classList.remove("show");
+    };
+    const clearActiveSelection = () => { activeSelectedText = ""; activeSelectionContext = ""; };
+    const normalizeSelectionText = (text) => text.replace(/\s+/g, " ").trim();
+
+    const captureCurrentSelection = (options = {}) => {
+      const preserveExisting = Boolean(options.preserveExisting);
+      const selection = window.getSelection();
+      console.log('Capturing selection:', selection ? selection.toString() : 'null');
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+      const selectedText = normalizeSelectionText(selection.toString());
+      if (!selectedText || selectedText.length < 2) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+      activeSelectedText = selectedText.slice(0, 1200);
+      console.log('Captured text:', activeSelectedText);
+      return true;
+    };
+
+    const updateSelectionPopover = () => {
+      console.log('Updating popover...');
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) { hideSelectionPopover(); return; }
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      console.log('Selection rect:', rect);
+      if (!captureCurrentSelection()) { hideSelectionPopover(); return; }
+      selectionPopover.style.left = `${Math.min(window.innerWidth - 140, Math.max(12, rect.left + rect.width / 2 - 52))}px`;
+      selectionPopover.style.top = `${Math.max(12, rect.top - 46)}px`;
+      selectionPopover.classList.add("show");
+      console.log('Popover shown');
+    };
+
+    const openAskPanel = () => {
+      captureCurrentSelection({ preserveExisting: true });
+      if (!activeSelectedText) {
+        askPanel.classList.add("open");
+        askSelectedText.textContent = "还没有选中文本。请先在知识点讲解里选中一小段内容。";
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        submitLesson();
+      askSelectedText.textContent = activeSelectedText;
+      askSelectedInput.value = activeSelectedText;
+      askQuestionInput.value = "";
+      askAnswerBox.textContent = "可以直接发送，也可以补充一句你具体想问什么。";
+      askPanel.classList.add("open");
+      hideSelectionPopover();
+    };
+
+    const askSelection = async (useCustomQuestion) => {
+      const textToAsk = (askSelectedInput.value || activeSelectedText).trim();
+      if (!currentLessonId) { askAnswerBox.textContent = "课程还没有加载完成。"; return; }
+      if (!textToAsk) { askPanel.classList.add("open"); return; }
+      activeSelectedText = textToAsk.slice(0, 1200);
+      askAnswerBox.textContent = "智能体正在解释这段内容，请稍等。";
+      try {
+        const payload = await authedFetch("/learning/ask-selection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lesson_id: currentLessonId,
+            selected_text: activeSelectedText,
+            question: useCustomQuestion ? askQuestionInput.value : "",
+            surrounding_context: currentLessonDetail ? currentLessonDetail.summary : ""
+          })
+        });
+        askAnswerBox.textContent = payload.response || "智能体暂时没有返回解释。";
+      } catch (error) {
+        askAnswerBox.textContent = `提问失败：${error.message}`;
       }
-    });
+    };
 
-    fillStarterBtn.addEventListener("click", () => {
-      if (!currentLessonDetail) return;
-      setEditorCode(currentLessonDetail.exercise.starter_code || "");
-      updateEditorStatus();
-      focusEditor();
-    });
+    window.openLearningAskPanel = openAskPanel;
+    window.askLearningSelection = askSelection;
 
-    restoreLastBtn.addEventListener("click", () => {
-      setEditorCode(latestSubmissionCode || (currentLessonDetail ? currentLessonDetail.exercise.starter_code : ""));
-      updateEditorStatus();
-      focusEditor();
-    });
+    // ===== 初始化 =====
+    const getUrlParam = (name) => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    };
 
-    clearEditorBtn.addEventListener("click", () => {
-      setEditorCode("");
-      updateEditorStatus();
-      focusEditor();
-    });
+    const bootstrap = async () => {
+      try {
+        // 先加载课程列表（公开访问）
+        const lessons = await authedFetch("/learning/lessons");
+        cachedChapters = lessons.chapters || [];
+        renderChapters(cachedChapters);
 
-    submitBtn.addEventListener("click", submitLesson);
+        // 尝试获取用户信息（需要登录）
+        try {
+          const me = await authedFetch("/auth/me");
+          userAvatar.textContent = me.username.charAt(0).toUpperCase();
+        } catch (authErr) {
+          // 未登录，显示默认头像
+          userAvatar.textContent = "?";
+        }
+
+        // 优先从 URL 参数加载指定课程
+        const urlLessonId = getUrlParam("lesson_id");
+        if (urlLessonId) {
+          await loadLesson(urlLessonId);
+        }
+        // 不自动加载第一个课程，让用户自己选择
+      } catch (err) {
+        console.error("加载失败:", err);
+        // 只在课程目录为空时显示错误
+        if (!chapterList.innerHTML.trim()) {
+          chapterList.innerHTML = '<div style="padding: 20px; color: #999;">加载课程失败，请刷新页面重试</div>';
+        }
+      }
+    };
+
+    const loadLesson = async (lessonId) => {
+      try {
+        const detail = await authedFetch(`/learning/lessons/${lessonId}`);
+        renderLessonDetail(detail);
+        // 重新渲染章节列表以更新选中状态
+        if (cachedChapters.length > 0) {
+          renderChapters(cachedChapters);
+        }
+        // 更新 URL 但不刷新页面
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set("lesson_id", lessonId);
+        window.history.pushState({}, "", newUrl);
+      } catch (err) {
+        console.error("加载课程详情失败:", err);
+        // 显示错误提示但不影响课程目录
+        lessonTitle.textContent = "加载失败";
+        lessonSummary.textContent = "该课程暂时无法加载，请选择其他课程。";
+      }
+    };
+
+    // ===== 事件监听（在 bootstrap 之后绑定）=====
     document.addEventListener("selectionchange", () => {
       window.clearTimeout(window.__learningSelectionTimer);
       window.__learningSelectionTimer = window.setTimeout(updateSelectionPopover, 120);
     });
-    document.addEventListener("mouseup", () => {
-      window.setTimeout(updateSelectionPopover, 20);
+    document.addEventListener("mouseup", () => window.setTimeout(updateSelectionPopover, 20));
+    document.addEventListener("mousedown", (e) => {
+      if (!selectionPopover.contains(e.target) && !askPanel.contains(e.target)) hideSelectionPopover();
     });
-    document.addEventListener("keyup", (event) => {
-      if (event.key.startsWith("Arrow") || event.key === "Shift") {
-        window.setTimeout(updateSelectionPopover, 20);
-      }
+    closeAskPanelBtn.addEventListener("click", () => askPanel.classList.remove("open"));
+    restoreLastBtn.addEventListener("click", () => {
+      codeEditor.value = latestSubmissionCode || (currentLessonDetail ? currentLessonDetail.exercise.starter_code : "");
     });
-    document.addEventListener("mousedown", (event) => {
-      if (!selectionPopover.contains(event.target) && !askPanel.contains(event.target)) {
-        hideSelectionPopover();
-      }
+    submitBtn.addEventListener("click", submitLesson);
+    codeEditor.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") { e.preventDefault(); const s = codeEditor.selectionStart; codeEditor.value = codeEditor.value.slice(0, s) + "    " + codeEditor.value.slice(codeEditor.selectionEnd); codeEditor.selectionStart = codeEditor.selectionEnd = s + 4; }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); submitLesson(); }
     });
-    window.addEventListener("scroll", hideSelectionPopover, true);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
-        flushLessonDwell();
-      } else {
-        lessonEnteredAt = Date.now();
-      }
-    });
-    window.addEventListener("beforeunload", flushLessonDwell);
-    [askSelectedBtn, manualAskBtn, dockAskBtn].forEach((button) => {
-      button.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        captureCurrentSelection({ preserveExisting: true });
-      });
-    });
-    askSelectedBtn.addEventListener("click", openAskPanel);
-    manualAskBtn.addEventListener("click", openAskPanel);
-    dockAskBtn.addEventListener("click", openAskPanel);
-    closeAskPanelBtn.addEventListener("click", () => {
-      askPanel.classList.remove("open");
-    });
-    sendSelectionQuestionBtn.addEventListener("click", () => askSelection(true));
-    quickExplainBtn.addEventListener("click", () => askSelection(false));
-    askQuestionInput.addEventListener("keydown", (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        askSelection(true);
-      }
-    });
-    goChatBtn.addEventListener("click", () => { window.location.href = "/chat"; });
-    goQuestionsBtn.addEventListener("click", () => { window.location.href = "/questions"; });
-    goProfileBtn.addEventListener("click", () => { window.location.href = "/profile"; });
-    logoutBtn.addEventListener("click", async () => {
-      try {
-        await authedFetch("/auth/logout", { method: "POST" });
-      } catch (_) {
-      } finally {
-        clearAuth();
-        window.location.href = "/";
-      }
-    });
-
-    createEduIDE({
-      textarea: codeEditor,
-      statusEl: editorStatus,
-      apiFetch: authedFetch,
-      contextTypeGetter: () => "lesson",
-      targetIdGetter: () => currentLessonId,
-      expectedFunctionGetter: () => currentLessonDetail ? currentLessonDetail.exercise.expected_function || "" : "",
-      requirementsGetter: () => currentLessonDetail ? currentLessonDetail.exercise.requirements || [] : [],
-      onSubmit: submitLesson,
-      onChange: updateEditorStatus
-    }).then(instance => {
-      eduIDE = instance;
-      if (codeEditor.value) eduIDE.setValue(codeEditor.value);
-    });
-
-    const bootstrap = async () => {
-      try {
-        const me = await authedFetch("/auth/me");
-        userMeta.textContent = `当前用户：${me.username}`;
-        const lessons = await authedFetch("/learning/lessons");
-        const items = lessons.items || [];
-        const chapters = lessons.chapters || [];
-        renderLessons(items, chapters);
-        if (items.length) {
-          await loadLesson(items[0].id);
-        } else if (chapters.length && chapters[0].sections && chapters[0].sections.length) {
-          renderPlannedLesson(chapters[0].sections[0], chapters[0]);
-          renderLessons(items, chapters);
-        } else {
-          lessonTitleEl.textContent = "暂无课程";
-        }
-      } catch (_) {
-        clearAuth();
-        window.location.href = "/";
-      }
-    };
 
     bootstrap();
   </script>

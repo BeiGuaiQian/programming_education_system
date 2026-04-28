@@ -6,6 +6,7 @@ import asyncio
 import os
 import secrets
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,9 +19,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+# Python 3.8 compatibility: asyncio.to_thread is only available in Python 3.9+
+if not hasattr(asyncio, 'to_thread'):
+    _executor = ThreadPoolExecutor(max_workers=10)
+    async def _to_thread(func, *args, **kwargs):
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(_executor, lambda: func(*args, **kwargs))
+    asyncio.to_thread = _to_thread
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+IMAGES_DIR = PROJECT_ROOT / "images"
 RUNTIME_DIR = PROJECT_ROOT / "server" / "runtime"
 
 if str(PROJECT_ROOT) not in sys.path:
@@ -147,7 +157,7 @@ class SessionData:
 
 
 APP_TITLE = "Programming Education System Backend"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("SERVER_TOKEN_EXPIRE_MINUTES", "120"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("SERVER_TOKEN_EXPIRE_MINUTES", "10080"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("SERVER_REFRESH_TOKEN_EXPIRE_DAYS", "14"))
 DEFAULT_ADMIN_USERNAME = os.getenv("SERVER_ADMIN_USERNAME", "admin")
 DEFAULT_ADMIN_PASSWORD = os.getenv("SERVER_ADMIN_PASSWORD", "change_me_please")
@@ -157,6 +167,7 @@ AGENT_QUEUE_TIMEOUT_SECONDS = max(1, int(os.getenv("SERVER_AGENT_QUEUE_TIMEOUT_S
 
 app = FastAPI(title=APP_TITLE, version="2.0.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 security = HTTPBearer(auto_error=False)
 store = AppStore(APP_DB_PATH)
 store.ensure_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
@@ -221,6 +232,17 @@ async def get_current_session(
 ) -> SessionData:
     session, _ = await _session_from_credentials(credentials)
     return session
+
+
+async def get_optional_session(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> SessionData | None:
+    """Return session if authenticated, otherwise None (for public endpoints)."""
+    try:
+        session, _ = await _session_from_credentials(credentials)
+        return session
+    except HTTPException:
+        return None
 
 
 async def get_current_access_token(
@@ -1390,7 +1412,7 @@ async def health_check() -> dict:
 
 
 @app.get("/learning/lessons")
-async def lessons_overview(session: SessionData = Depends(get_current_session)) -> dict:
+async def lessons_overview(session: SessionData | None = Depends(get_optional_session)) -> dict:
     return {
         "items": list_lessons(language="python"),
         "chapters": list_curriculum(language="python"),
@@ -1398,12 +1420,14 @@ async def lessons_overview(session: SessionData = Depends(get_current_session)) 
 
 
 @app.get("/learning/lessons/{lesson_id}")
-async def lesson_detail(lesson_id: str, session: SessionData = Depends(get_current_session)) -> dict:
+async def lesson_detail(lesson_id: str, session: SessionData | None = Depends(get_optional_session)) -> dict:
     lesson = get_lesson(lesson_id)
     if lesson is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识点不存在")
 
-    latest_submission = await _run_store(store.get_latest_lesson_submission, session.username, lesson_id)
+    latest_submission = None
+    if session:
+        latest_submission = await _run_store(store.get_latest_lesson_submission, session.username, lesson_id)
     return {
         "lesson": lesson,
         "latest_submission": latest_submission,
@@ -1806,6 +1830,38 @@ async def get_conversation(conversation_id: str, session: SessionData = Depends(
         "conversation": conversation,
         "messages": await _run_store(store.list_messages, session.username, conversation_id),
     }
+
+
+class UpdateConversationRequest(BaseModel):
+    title: str
+
+
+@app.delete("/chat/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    session: SessionData = Depends(get_current_session),
+) -> dict:
+    success = await _run_store(store.delete_conversation, session.username, conversation_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="对话不存在")
+    return {"success": True, "message": "对话已删除"}
+
+
+@app.patch("/chat/conversations/{conversation_id}")
+async def update_conversation(
+    conversation_id: str,
+    payload: UpdateConversationRequest,
+    session: SessionData = Depends(get_current_session),
+) -> dict:
+    success = await _run_store(
+        store.update_conversation_title,
+        session.username,
+        conversation_id,
+        payload.title,
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="对话不存在")
+    return {"success": True, "message": "标题已更新"}
 
 
 @app.post("/agent/request", response_model=AgentResponse)

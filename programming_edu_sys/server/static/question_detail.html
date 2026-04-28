@@ -3,111 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>题目详情 - 编程教育智能体系统</title>
+  <title>题目详情 - CodeMentor</title>
   <link rel="stylesheet" href="/static/edu_ide.css">
   <style>
-    :root {
-      --bg: #eef4f7;
-      --panel: #ffffff;
-      --line: #d7e1ea;
-      --ink: #17232f;
-      --muted: #667789;
-      --accent: #0f766e;
-      --accent-2: #2563eb;
-      --ok: #1f8f4c;
-      --bad: #c53030;
-      --code: #0f172a;
-      --soft: #f4f8fb;
-      --shadow: 0 18px 44px rgba(20, 36, 52, 0.10);
-    }
-
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      background: #f9f8f6;
+      color: #3a3a3a;
       min-height: 100vh;
-      background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32%),
-        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.10), transparent 28%),
-        var(--bg);
-      color: var(--ink);
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
+    /* ========== 顶部导航栏 ========== */
     .topbar {
-      height: 64px;
-      padding: 0 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      background: rgba(255, 255, 255, 0.92);
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid #e5e2dd;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.04), 0px 1px 2px rgba(0,0,0,0.02);
+      background: #ffffff;
+      padding: 0 32px;
+      height: 65px;
       position: sticky;
       top: 0;
-      z-index: 10;
-      backdrop-filter: blur(10px);
+      z-index: 100;
     }
 
-    .brand {
-      font-weight: 900;
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #6b9ab8;
+      width: 36px;
+      height: 36px;
+      color: #fff;
       font-size: 18px;
     }
 
-    .nav {
+    .logo-text {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .topbar-nav {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      align-items: center;
+      column-gap: 8px;
     }
 
-    button {
-      border: 0;
-      border-radius: 13px;
-      padding: 10px 13px;
-      font: inherit;
-      font-weight: 800;
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 8px 16px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      transition: transform .15s ease;
+      text-decoration: none;
+      transition: all 0.2s ease;
     }
 
-    button:hover { transform: translateY(-1px); }
-
-    .primary {
-      color: white;
-      background: linear-gradient(135deg, var(--accent), #13a092);
+    .nav-btn:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
     }
 
-    .secondary {
-      color: white;
-      background: linear-gradient(135deg, var(--accent-2), #3b82f6);
+    .nav-btn.active {
+      background: #e8f1f8;
+      color: #7aa8c7;
     }
 
-    .ghost {
-      color: var(--ink);
-      background: #eef5fb;
+    .nav-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
-    .layout {
-      width: min(1500px, 100%);
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #5b8aaf, #4a5568);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: #f9f8f6;
+      color: #c53030;
+    }
+
+    /* ========== 主体布局 ========== */
+    .question-page {
+      padding: 24px 32px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 18px;
+      min-height: calc(100vh - 65px);
       display: grid;
       grid-template-columns: minmax(360px, 0.95fr) minmax(460px, 1.05fr);
-      gap: 18px;
-      height: calc(100vh - 64px);
+      gap: 24px;
     }
 
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       overflow: hidden;
       min-height: 0;
     }
 
     .pane-body {
-      padding: 20px;
+      padding: 24px;
       overflow: auto;
       height: 100%;
     }
@@ -117,12 +165,14 @@
     }
 
     .title {
-      font-size: 28px;
+      font-size: 24px;
+      font-weight: 500;
+      color: #3a3a3a;
       margin-bottom: 12px;
     }
 
     .meta {
-      color: var(--muted);
+      color: #8a8a8a;
       font-size: 14px;
       line-height: 1.75;
     }
@@ -136,28 +186,42 @@
 
     .pill {
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
       border-radius: 999px;
-      padding: 5px 10px;
+      padding: 4px 10px;
       font-size: 12px;
-      font-weight: 850;
-      background: #edf7f6;
-      color: var(--accent);
+      font-weight: 500;
+      background: #f0f8f5;
+      color: #7a9b87;
     }
 
     .content {
       line-height: 1.85;
       white-space: pre-wrap;
-      color: #2f3f4f;
+      color: #3a3a3a;
     }
 
     .example-box,
     .hint-box,
     .result-box {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--soft);
-      padding: 14px;
-      margin-top: 14px;
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      background: #f9f8f6;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .result-box.ok {
+      background: #ecfdf3;
+      color: #1f8f4c;
+      border-color: #b7ebc5;
+    }
+
+    .result-box.bad {
+      background: #fff5f5;
+      color: #c53030;
+      border-color: #fed7d7;
     }
 
     .editor-shell {
@@ -169,13 +233,13 @@
 
     .editor-head,
     .editor-actions {
-      padding: 12px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       gap: 10px;
       align-items: center;
       flex-wrap: wrap;
-      background: linear-gradient(180deg, #111b2e, #0b1220);
+      background: #0b1220;
       color: #dbe7f5;
       border-bottom: 1px solid rgba(148, 163, 184, 0.18);
     }
@@ -193,21 +257,9 @@
       outline: none;
       resize: none;
       padding: 16px;
-      background: var(--code);
+      background: #0f172a;
       color: #e5edf9;
       font: 14px/1.65 Consolas, "Courier New", monospace;
-    }
-
-    .result-box.ok {
-      background: #ecfdf3;
-      color: var(--ok);
-      border-color: #b7ebc5;
-    }
-
-    .result-box.bad {
-      background: #fff5f5;
-      color: var(--bad);
-      border-color: #fed7d7;
     }
 
     table {
@@ -218,21 +270,52 @@
     }
 
     th, td {
-      border: 1px solid var(--line);
-      padding: 8px;
+      border: 1px solid #e5e2dd;
+      padding: 10px;
       text-align: left;
       word-break: break-word;
       vertical-align: top;
     }
 
     th {
-      background: #f8fbff;
+      background: #f9f8f6;
+      font-weight: 500;
     }
 
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .primary {
+      color: white;
+      background: #7a9b87;
+    }
+
+    .secondary {
+      color: white;
+      background: #6b9ab8;
+    }
+
+    .ghost {
+      color: #3a3a3a;
+      background: #f0f0f0;
+    }
+
+    /* 响应式 */
     @media (max-width: 980px) {
-      .layout {
-        height: auto;
+      .question-page {
         grid-template-columns: 1fr;
+        height: auto;
       }
       .panel {
         min-height: 520px;
@@ -241,31 +324,53 @@
   </style>
 </head>
 <body>
+  <!-- 顶部导航栏 -->
   <header class="topbar">
-    <div class="brand">题库做题</div>
-    <nav class="nav">
-      <button class="ghost" id="backBtn" type="button">题库大全</button>
-      <button class="ghost" id="learnBtn" type="button">学习中心</button>
-      <button class="ghost" id="profileBtn" type="button">个人中心</button>
+    <div class="topbar-left">
+      <div class="logo-icon">&lt;/&gt;</div>
+      <span class="logo-text">CodeMentor</span>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/learn" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+        学习中心
+      </a>
+      <a href="/questions" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        题库
+      </a>
+      <a href="/chat" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI 助手
+      </a>
+      <a href="/profile" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        个人中心
+      </a>
     </nav>
+    <div class="topbar-user">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <button class="logout-btn" id="logoutBtn" type="button">退出</button>
+    </div>
   </header>
 
-  <main class="layout">
+  <!-- 主体 -->
+  <main class="question-page">
     <section class="panel">
       <div class="pane-body">
         <h1 class="title" id="questionTitle">正在加载题目...</h1>
         <div class="meta" id="questionMeta"></div>
         <div class="pill-row" id="tagList"></div>
         <section>
-          <h2>题目描述</h2>
+          <h2 style="font-size: 18px; font-weight: 500; margin-bottom: 10px;">题目描述</h2>
           <div class="content" id="questionContent"></div>
         </section>
         <section class="example-box">
-          <h3>示例</h3>
+          <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 10px;">示例</h3>
           <div id="exampleList" class="meta"></div>
         </section>
         <section class="hint-box">
-          <h3>提示</h3>
+          <h3 style="font-size: 16px; font-weight: 500; margin-bottom: 10px;">提示</h3>
           <div id="hintList" class="meta"></div>
         </section>
         <section class="result-box" id="resultBox">提交后，这里会显示判题结果。</section>
@@ -295,6 +400,7 @@
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
   <script src="/static/edu_ide.js"></script>
   <script>
+    const userAvatar = document.getElementById("userAvatar");
     const questionTitle = document.getElementById("questionTitle");
     const questionMeta = document.getElementById("questionMeta");
     const tagList = document.getElementById("tagList");
@@ -309,6 +415,7 @@
     const starterBtn = document.getElementById("starterBtn");
     const lastBtn = document.getElementById("lastBtn");
     const answerBtn = document.getElementById("answerBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
 
     let accessToken = localStorage.getItem("pes_token");
     let refreshToken = localStorage.getItem("pes_refresh_token");
@@ -539,9 +646,22 @@
       focusEditor();
     });
 
-    document.getElementById("backBtn").addEventListener("click", () => { window.location.href = "/questions"; });
-    document.getElementById("learnBtn").addEventListener("click", () => { window.location.href = "/learn"; });
-    document.getElementById("profileBtn").addEventListener("click", () => { window.location.href = "/profile"; });
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        const me = await authedFetch("/auth/me");
+        userAvatar.textContent = me.username.charAt(0).toUpperCase();
+      } catch (_) {}
+    };
 
     createEduIDE({
       textarea: codeEditor,
@@ -564,6 +684,9 @@
         clearAuth();
         window.location.href = "/";
       });
+
+    bootstrap();
+
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
         flushQuestionDwell();
