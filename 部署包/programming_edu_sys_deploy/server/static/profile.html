@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人中心 - CodeMentor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      background: #f9f8f6;
+      color: #3a3a3a;
+      min-height: 100vh;
+    }
+
+    /* ========== 顶部导航栏 ========== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e5e2dd;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.04), 0px 1px 2px rgba(0,0,0,0.02);
+      background: #ffffff;
+      padding: 0 32px;
+      height: 65px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #6b9ab8;
+      width: 36px;
+      height: 36px;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .topbar-nav {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 8px 16px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    .nav-btn.active {
+      background: #e8f1f8;
+      color: #7aa8c7;
+    }
+
+    .nav-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #5b8aaf, #4a5568);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: #f9f8f6;
+      color: #c53030;
+    }
+
+    /* ========== 主体布局 ========== */
+    .profile-page {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+      padding: 24px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ========== 左侧边栏 ========== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .sidebar-card {
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #3a3a3a;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-meta {
+      font-size: 13px;
+      color: #8a8a8a;
+    }
+
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #e8f1f8;
+      color: #7a9b87;
+      font-size: 36px;
+      font-weight: 700;
+      border: 1px solid #e5e2dd;
+      margin: 0 auto;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #3a3a3a;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #e5e2dd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      color: #3a3a3a;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #6b9ab8;
+    }
+
+    /* ========== 完全自定义下拉框组件 ========== */
+    .custom-select {
+      position: relative;
+      width: 100%;
+      user-select: none;
+      /* DEBUG: Custom select styles loaded */
+    }
+
+    /* 强制隐藏原生select */
+    .custom-select > select {
+      display: none !important;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1.5px solid #e5e2dd;
+      border-radius: 10px;
+      padding: 12px 16px;
+      background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .custom-select:hover .custom-select-trigger {
+      border-color: #c5d5e0;
+      background: linear-gradient(145deg, #ffffff 0%, #f5f8fa 100%);
+      box-shadow: 0 4px 12px rgba(107, 154, 184, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .custom-select.open .custom-select-trigger {
+      border-color: #6b9ab8;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(107, 154, 184, 0.15), 0 4px 12px rgba(107, 154, 184, 0.1);
+    }
+
+    .custom-select-arrow {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid #8a8a8a;
+      border-bottom: 2px solid #8a8a8a;
+      transform: rotate(45deg);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-left: 12px;
+      flex-shrink: 0;
+    }
+
+    .custom-select:hover .custom-select-arrow {
+      border-color: #6b9ab8;
+    }
+
+    .custom-select.open .custom-select-arrow {
+      transform: rotate(225deg);
+      border-color: #6b9ab8;
+    }
+
+    .custom-select-options {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px) scale(0.96);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .custom-select.open .custom-select-options {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .custom-option {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: #3a3a3a;
+      margin-bottom: 4px;
+    }
+
+    .custom-option:last-child {
+      margin-bottom: 0;
+    }
+
+    .custom-option:hover {
+      background: linear-gradient(135deg, #f0f7fc 0%, #e8f1f8 100%);
+      color: #5a8aa7;
+    }
+
+    .custom-option.selected {
+      background: linear-gradient(135deg, #e8f1f8 0%, #d4e7f4 100%);
+      color: #4a7a97;
+      font-weight: 600;
+    }
+
+    .custom-option.selected::before {
+      content: '✓';
+      margin-right: 10px;
+      font-weight: 700;
+      color: #6b9ab8;
+    }
+
+    .custom-option-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: #f0f0f0;
+      font-size: 12px;
+    }
+
+    .custom-option:hover .custom-option-icon {
+      background: #e0e8f0;
+    }
+
+    .custom-option-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e2dd, transparent);
+      margin: 8px 0;
+    }
+
+    .custom-select-backdrop {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease;
+    }
+
+    .custom-select.open ~ .custom-select-backdrop,
+    .custom-select-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* 隐藏原生 select */
+    .custom-select select {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .save-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 12px;
+      border: none;
+      background: #7a9b87;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-top: 8px;
+    }
+
+    .save-btn:hover {
+      background: #6a8b77;
+    }
+
+    .message {
+      min-height: 20px;
+      color: #8a8a8a;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    /* ========== 右侧主内容 ========== */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #3a3a3a;
+      margin-bottom: 6px;
+    }
+
+    .panel .meta {
+      font-size: 13px;
+      color: #8a8a8a;
+      margin-bottom: 16px;
+    }
+
+    .level-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .level-name {
+      font-size: 24px;
+      font-weight: 600;
+      color: #3a3a3a;
+      margin-bottom: 6px;
+    }
+
+    .level-score {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(#7a9b87 var(--progress, 10%), #e5e2dd 0);
+      position: relative;
+      font-size: 24px;
+      font-weight: 600;
+      color: #7a9b87;
+    }
+
+    .level-score::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    .level-score span {
+      position: relative;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+
+    .stat {
+      display: grid;
+      gap: 6px;
+      text-align: center;
+      padding: 16px;
+      background: #f9f8f6;
+      border-radius: 10px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #7a9b87;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #8a8a8a;
+    }
+
+    .wide-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card-item {
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fff;
+      display: grid;
+      gap: 8px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-weight: 500;
+      color: #3a3a3a;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #f0f8f5;
+      color: #7a9b87;
+      white-space: nowrap;
+    }
+
+    .pill.warn {
+      background: #fff7df;
+      color: #b7791f;
+    }
+
+    .pill.ok {
+      background: #ecfdf3;
+      color: #1f8f4c;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #e5e2dd;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: #7a9b87;
+      width: var(--width, 0%);
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+      color: #8a8a8a;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: #f0f8f5;
+      color: #7a9b87;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .link-btn:hover {
+      background: #e0f0e5;
+    }
+
+    .ability-score {
+      font-size: 20px;
+      font-weight: 600;
+      color: #7a9b87;
+    }
+
+    /* 查看更多按钮 */
+    .view-more-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid #e5e2dd;
+      border-radius: 8px;
+      background: #fff;
+      color: #6b9ab8;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 12px;
+    }
+
+    .view-more-btn:hover {
+      background: #f0f8f5;
+      border-color: #6b9ab8;
+    }
+
+    /* 面板头部 */
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .panel-header-left h2 {
+      margin-bottom: 4px;
+    }
+
+    
+    .dashboard-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(107, 154, 184, 0.3);
+    }
+
+    .dashboard-card h3 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .dashboard-card p {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .dashboard-card .arrow {
+      font-size: 24px;
+      opacity: 0.8;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1100px) {
+      .profile-page {
+        grid-template-columns: 280px minmax(0, 1fr);
+      }
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .profile-page {
+        grid-template-columns: 1fr;
+      }
+      .wide-grid {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .level-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .level-score {
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">&lt;/&gt;</div>
+      <span class="logo-text">CodeMentor</span>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/learn" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+        学习中心
+      </a>
+      <a href="/questions" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        题库
+      </a>
+      <a href="/chat" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI 助手
+      </a>
+      <a href="/profile" class="nav-btn active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        个人中心
+      </a>
+    </nav>
+    <div class="topbar-user">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <button class="logout-btn" id="logoutBtn" type="button">退出</button>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <div class="profile-page">
+    <!-- 左侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-title">个人资料</div>
+        <div class="sidebar-meta" id="userMeta">正在加载...</div>
+        <div class="avatar" id="avatarPreview" style="margin-top: 16px;">U</div>
+      </div>
+
+      <div class="sidebar-card">
+        <form class="profile-form" id="profileForm">
+          <label>
+            昵称
+            <input id="nicknameInput" maxlength="32" placeholder="给自己起一个学习昵称">
+          </label>
+          <label>
+            头像地址
+            <input id="avatarInput" maxlength="500" placeholder="可粘贴图片 URL">
+          </label>
+          <label>
+            个人简介
+            <textarea id="bioInput" maxlength="160" placeholder="比如：正在学习 Python 基础"></textarea>
+          </label>
+          <label>
+            学习目标
+            <input id="learningGoalInput" maxlength="120" placeholder="比如：两个月内能独立完成课程作业">
+          </label>
+          <label>
+            学习方式
+            <div class="custom-select" id="learningStyleSelect">
+              <div class="custom-select-trigger">
+                <span class="custom-select-text">暂不设置</span>
+                <div class="custom-select-arrow"></div>
+              </div>
+              <div class="custom-select-options">
+                <div class="custom-option" data-value="">暂不设置</div>
+                <div class="custom-option" data-value="concept_first">📚 先讲概念，再看例子</div>
+                <div class="custom-option" data-value="example_first">💡 先看例子，再反推概念</div>
+                <div class="custom-option" data-value="practice_first">🎯 边做边学</div>
+                <div class="custom-option" data-value="debug_first">🔧 通过纠错来学习</div>
+              </div>
+              <select id="learningStyleInput" style="display: none;">
+                <option value="">暂不设置</option>
+                <option value="concept_first">先讲概念，再看例子</option>
+                <option value="example_first">先看例子，再反推概念</option>
+                <option value="practice_first">边做边学</option>
+                <option value="debug_first">通过纠错来学习</option>
+              </select>
+            </div>
+          </label>
+          <label>
+            学习节奏
+            <div class="custom-select" id="preferredPaceSelect">
+              <div class="custom-select-trigger">
+                <span class="custom-select-text">暂不设置</span>
+                <div class="custom-select-arrow"></div>
+              </div>
+              <div class="custom-select-options">
+                <div class="custom-option" data-value="">暂不设置</div>
+                <div class="custom-option" data-value="slow">🐢 慢一点，拆细步骤</div>
+                <div class="custom-option" data-value="normal">🚶 正常节奏</div>
+                <div class="custom-option" data-value="fast">🚀 快节奏，直接抓重点</div>
+              </div>
+              <select id="preferredPaceInput" style="display: none;">
+                <option value="">暂不设置</option>
+                <option value="slow">慢一点，拆细步骤</option>
+                <option value="normal">正常节奏</option>
+                <option value="fast">快节奏，直接抓重点</option>
+              </select>
+            </div>
+          </label>
+          <button class="save-btn" type="submit">保存资料</button>
+          <div class="message" id="profileMessage"></div>
+        </form>
+      </div>
+    </aside>
+
+    <!-- 右侧主内容 -->
+    <main class="main-content">
+      <!-- 数据看板入口 -->
+    
+      <div class="panel level-card">
+        <div>
+          <div class="sidebar-meta">当前学习水平</div>
+          <div class="level-name" id="levelName">正在分析...</div>
+          <div class="sidebar-meta" id="levelDesc">系统会根据你的学习进度、做题次数和通过情况生成判断。</div>
+        </div>
+        <div class="level-score" id="levelScore" style="--progress: 10%">
+          <span>10</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-value" id="completedStat">0/0</div>
+            <div class="stat-label">完成知识点</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="attemptStat">0</div>
+            <div class="stat-label">练习提交</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="questionAttemptStat">0</div>
+            <div class="stat-label">题库提交</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="scoreStat">0</div>
+            <div class="stat-label">平均最好得分</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="studyTimeStat">0 分钟</div>
+            <div class="stat-label">学习停留</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wide-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <h2>能力画像</h2>
+              <div class="meta">综合学习中心进度、题库得分、停留行为和卡点数据。</div>
+            </div>
+          </div>
+          <div class="list" id="abilityList"></div>
+          <button class="view-more-btn" id="abilityViewMore" style="display:none;">查看更多</button>
+        </div>
+        <div class="panel">
+          <h2>行为洞察</h2>
+          <div class="meta">学习目标、学习方式、停留卡点等数据。</div>
+          <div class="list" id="insightList"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>学习中心进度</h2>
+        <div class="meta">按学习中心章节树统计。</div>
+        <div class="list" id="chapterList"></div>
+      </div>
+
+      <div class="wide-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <h2>推荐学习路径</h2>
+              <div class="meta">优先考虑你未完成的学习中心小节。</div>
+            </div>
+          </div>
+          <div class="list" id="pathList"></div>
+          <button class="view-more-btn" id="pathViewMore" style="display:none;">查看更多</button>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <h2>推荐题目</h2>
+              <div class="meta">结合当前水平、题库提交记录推荐。</div>
+            </div>
+          </div>
+          <div class="list" id="questionList"></div>
+          <button class="view-more-btn" id="questionViewMore" style="display:none;">查看更多</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>智能推荐</h2>
+        <div class="meta">根据你的完成情况推荐下一步学习内容。</div>
+        <div class="list" id="recommendList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>最近练习</h2>
+        <div class="list" id="recentList"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const userAvatar = document.getElementById("userAvatar");
+    const userMeta = document.getElementById("userMeta");
+    const avatarPreview = document.getElementById("avatarPreview");
+    const profileForm = document.getElementById("profileForm");
+    const nicknameInput = document.getElementById("nicknameInput");
+    const avatarInput = document.getElementById("avatarInput");
+    const bioInput = document.getElementById("bioInput");
+    const learningGoalInput = document.getElementById("learningGoalInput");
+    const learningStyleInput = document.getElementById("learningStyleInput");
+    const preferredPaceInput = document.getElementById("preferredPaceInput");
+    const profileMessage = document.getElementById("profileMessage");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const levelName = document.getElementById("levelName");
+    const levelDesc = document.getElementById("levelDesc");
+    const levelScore = document.getElementById("levelScore");
+    const completedStat = document.getElementById("completedStat");
+    const attemptStat = document.getElementById("attemptStat");
+    const questionAttemptStat = document.getElementById("questionAttemptStat");
+    const scoreStat = document.getElementById("scoreStat");
+    const studyTimeStat = document.getElementById("studyTimeStat");
+    const abilityList = document.getElementById("abilityList");
+    const insightList = document.getElementById("insightList");
+    const chapterList = document.getElementById("chapterList");
+    const pathList = document.getElementById("pathList");
+    const questionList = document.getElementById("questionList");
+    const recommendList = document.getElementById("recommendList");
+    const recentList = document.getElementById("recentList");
+    const abilityViewMore = document.getElementById("abilityViewMore");
+    const pathViewMore = document.getElementById("pathViewMore");
+    const questionViewMore = document.getElementById("questionViewMore");
+
+    // 存储完整数据
+    let fullAbilityData = [];
+    let fullPathData = [];
+    let fullQuestionData = [];
+    let expandedSections = {
+      ability: false,
+      path: false,
+      question: false
+    };
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "登录已过期");
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    };
+
+    const formatTime = (value) => {
+      if (!value) return "暂无";
+      return new Date(value).toLocaleString("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    };
+
+    const renderAvatar = (profile) => {
+      const nickname = profile.nickname || profile.username || "U";
+      if (profile.avatar_url) {
+        avatarPreview.innerHTML = `<img src="${escapeHTML(profile.avatar_url)}" alt="头像">`;
+      } else {
+        avatarPreview.textContent = nickname.slice(0, 1).toUpperCase();
+      }
+    };
+
+    const clampScore = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+
+    const renderAbilityProfile = (items) => {
+      fullAbilityData = items || [];
+      const displayItems = expandedSections.ability ? fullAbilityData : fullAbilityData.slice(0, 3);
+
+      abilityList.innerHTML = displayItems.map(item => {
+        const score = clampScore(item.score);
+        const pillClass = score >= 70 ? "ok" : score >= 35 ? "warn" : "";
+        return `
+          <div class="card-item">
+            <div class="card-header">
+              <div class="card-title">${escapeHTML(item.name)}</div>
+              <div class="ability-score">${score}</div>
+            </div>
+            <div class="bar"><span style="--width: ${score}%"></span></div>
+            <div class="card-header">
+              <span class="pill ${pillClass}">${escapeHTML(item.level)}</span>
+              <span class="sidebar-meta">章节 ${item.chapter_score} / 题库 ${item.question_score}</span>
+            </div>
+            <div class="sidebar-meta">${escapeHTML(item.description)}</div>
+          </div>
+        `;
+      }).join("") || '<div class="sidebar-meta">能力画像还在积累数据。</div>';
+
+      // 显示/隐藏查看更多按钮
+      if (fullAbilityData.length > 3) {
+        abilityViewMore.style.display = 'inline-flex';
+        abilityViewMore.textContent = expandedSections.ability ? '收起' : '查看更多';
+      } else {
+        abilityViewMore.style.display = 'none';
+      }
+    };
+
+    const renderInsights = (items) => {
+      insightList.innerHTML = (items || []).map(item => `
+        <div class="card-item">
+          <div class="card-title">${escapeHTML(item.title)}</div>
+          <div class="sidebar-meta">${escapeHTML(item.content)}</div>
+        </div>
+      `).join("") || '<div class="sidebar-meta">暂无行为洞察。</div>';
+    };
+
+    const renderCurriculumProgress = (curriculum) => {
+      const chapters = (curriculum && curriculum.chapters) || [];
+      chapterList.innerHTML = chapters.map(chapter => {
+        const score = clampScore(chapter.score);
+        return `
+          <div class="card-item">
+            <div class="card-header">
+              <div class="card-title">${escapeHTML(chapter.title)}</div>
+              <span class="pill">${chapter.completed_sections}/${chapter.total_sections}</span>
+            </div>
+            <div class="bar"><span style="--width: ${chapter.completion_rate}%"></span></div>
+            <div class="card-meta">
+              <span>完成 ${chapter.completion_rate}%</span>
+              <span>已开始 ${chapter.started_sections} 节</span>
+              <span>能力估计 ${score}</span>
+            </div>
+            <div class="sidebar-meta">${escapeHTML(chapter.description)}</div>
+          </div>
+        `;
+      }).join("") || '<div class="sidebar-meta">暂无学习中心进度。</div>';
+    };
+
+    const renderLearningPath = (items) => {
+      fullPathData = items || [];
+      const displayItems = expandedSections.path ? fullPathData : fullPathData.slice(0, 3);
+
+      pathList.innerHTML = displayItems.map(item => `
+        <div class="card-item">
+          <div class="card-header">
+            <div class="card-title">${escapeHTML(item.title)}</div>
+            <span class="pill ${item.priority <= 1 ? "warn" : ""}">${escapeHTML(item.status_label)}</span>
+          </div>
+          <div class="sidebar-meta">${escapeHTML(item.chapter_title)} · 预计 ${escapeHTML(item.estimated_minutes)} 分钟</div>
+          <div class="sidebar-meta">${escapeHTML(item.reason)}</div>
+          <a class="link-btn" href="/learn${item.lesson_id ? '?lesson_id=' + encodeURIComponent(item.lesson_id) : ''}">${escapeHTML(item.action)}</a>
+        </div>
+      `).join("") || '<div class="sidebar-meta">暂无推荐路径。</div>';
+
+      // 显示/隐藏查看更多按钮
+      if (fullPathData.length > 3) {
+        pathViewMore.style.display = 'inline-flex';
+        pathViewMore.textContent = expandedSections.path ? '收起' : '查看更多';
+      } else {
+        pathViewMore.style.display = 'none';
+      }
+    };
+
+    const renderQuestionRecommendations = (items) => {
+      fullQuestionData = items || [];
+      const displayItems = expandedSections.question ? fullQuestionData : fullQuestionData.slice(0, 3);
+
+      questionList.innerHTML = displayItems.map(item => `
+        <div class="card-item">
+          <div class="card-header">
+            <div class="card-title">${escapeHTML(item.title)}</div>
+            <span class="pill ${item.passed ? "ok" : item.attempts ? "warn" : ""}">${item.passed ? "已通过" : item.attempts ? "待突破" : "新题"}</span>
+          </div>
+          <div class="sidebar-meta">${escapeHTML(item.topic_name)} · ${escapeHTML(item.difficulty)} · 最好得分 ${escapeHTML(item.best_score || 0)}</div>
+          <div class="sidebar-meta">${escapeHTML(item.recommend_reason)}</div>
+          <a class="link-btn" href="/questions/${escapeHTML(item.id || item.question_id || '')}">进入做题</a>
+        </div>
+      `).join("") || '<div class="sidebar-meta">暂无推荐题目。</div>';
+
+      // 显示/隐藏查看更多按钮
+      if (fullQuestionData.length > 3) {
+        questionViewMore.style.display = 'inline-flex';
+        questionViewMore.textContent = expandedSections.question ? '收起' : '查看更多';
+      } else {
+        questionViewMore.style.display = 'none';
+      }
+    };
+
+    const renderOverview = (data) => {
+      const profile = data.profile || {};
+      nicknameInput.value = profile.nickname || profile.username || "";
+      avatarInput.value = profile.avatar_url || "";
+      bioInput.value = profile.bio || "";
+      learningGoalInput.value = profile.learning_goal || "";
+      // 使用自定义下拉框设置值
+      setCustomSelectValue('learningStyleSelect', profile.learning_style || "");
+      setCustomSelectValue('preferredPaceSelect', profile.preferred_pace || "");
+      userMeta.textContent = `账号：${profile.username || ""}`;
+      renderAvatar(profile);
+
+      levelName.textContent = data.level.name;
+      levelDesc.textContent = data.level.description;
+      levelScore.style.setProperty("--progress", `${data.level.score}%`);
+      levelScore.querySelector("span").textContent = data.level.score;
+
+      completedStat.textContent = `${data.stats.completed_lessons}/${data.stats.total_lessons}`;
+      attemptStat.textContent = data.stats.total_attempts;
+      questionAttemptStat.textContent = data.stats.question_attempts || 0;
+      scoreStat.textContent = data.stats.average_best_score;
+      studyTimeStat.textContent = `${data.stats.total_study_minutes || 0} 分钟`;
+
+      renderAbilityProfile(data.skill_profile || []);
+      renderInsights(data.behavior_insights || []);
+      renderCurriculumProgress(data.curriculum || {});
+      renderLearningPath(data.learning_path || []);
+      renderQuestionRecommendations(data.recommended_questions || []);
+
+      recommendList.innerHTML = (data.recommendations || []).map(item => `
+        <div class="card-item">
+          <div class="card-header">
+            <div class="card-title">${escapeHTML(item.title)}</div>
+            <span class="pill ${item.priority === "high" ? "warn" : ""}">${escapeHTML(item.action)}</span>
+          </div>
+          <div class="sidebar-meta">${escapeHTML(item.reason)}</div>
+        </div>
+      `).join("") || '<div class="sidebar-meta">暂无推荐。</div>';
+
+      recentList.innerHTML = (data.recent_submissions || []).map(item => `
+        <div class="card-item">
+          <div class="card-header">
+            <div class="card-title">${escapeHTML(item.lesson_title)}</div>
+            <span class="pill ${item.passed ? "ok" : "warn"}">${item.passed ? "通过" : "未通过"}</span>
+          </div>
+          <div class="sidebar-meta">得分 ${item.score}，提交时间：${formatTime(item.submitted_at)}</div>
+        </div>
+      `).join("") || '<div class="sidebar-meta">还没有练习提交记录。</div>';
+    };
+
+    const loadOverview = async () => {
+      const data = await authedFetch("/profile/overview");
+      renderOverview(data);
+    };
+
+    profileForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      profileMessage.textContent = "正在保存...";
+      try {
+        await authedFetch("/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nickname: nicknameInput.value,
+            avatar_url: avatarInput.value,
+            bio: bioInput.value
+          })
+        });
+        await authedFetch("/profile/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            learning_goal: learningGoalInput.value,
+            learning_style: learningStyleInput.value,
+            preferred_pace: preferredPaceInput.value
+          })
+        });
+        profileMessage.textContent = "资料已保存。";
+        await loadOverview();
+      } catch (error) {
+        profileMessage.textContent = `保存失败：${error.message}`;
+      }
+    });
+
+    // ========== 自定义下拉框功能 ==========
+    const initCustomSelect = (selectId) => {
+      const customSelect = document.getElementById(selectId);
+      if (!customSelect) return;
+
+      const trigger = customSelect.querySelector('.custom-select-trigger');
+      const options = customSelect.querySelectorAll('.custom-option');
+      const textSpan = customSelect.querySelector('.custom-select-text');
+      const hiddenSelect = customSelect.querySelector('select');
+
+      // 点击触发器展开/收起
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = customSelect.classList.contains('open');
+        // 关闭所有其他下拉框
+        document.querySelectorAll('.custom-select.open').forEach(el => {
+          if (el !== customSelect) el.classList.remove('open');
+        });
+        customSelect.classList.toggle('open');
+      });
+
+      // 点击选项
+      options.forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const value = option.dataset.value;
+          const text = option.textContent;
+
+          // 更新显示文本
+          textSpan.textContent = text;
+
+          // 更新隐藏 select
+          hiddenSelect.value = value;
+
+          // 更新选中状态
+          options.forEach(opt => opt.classList.remove('selected'));
+          option.classList.add('selected');
+
+          // 关闭下拉框
+          customSelect.classList.remove('open');
+
+          // 触发 change 事件
+          hiddenSelect.dispatchEvent(new Event('change'));
+        });
+      });
+
+      // 点击外部关闭
+      document.addEventListener('click', () => {
+        customSelect.classList.remove('open');
+      });
+    };
+
+    // 设置下拉框值
+    const setCustomSelectValue = (selectId, value) => {
+      const customSelect = document.getElementById(selectId);
+      if (!customSelect) return;
+
+      const options = customSelect.querySelectorAll('.custom-option');
+      const textSpan = customSelect.querySelector('.custom-select-text');
+      const hiddenSelect = customSelect.querySelector('select');
+
+      options.forEach(option => {
+        if (option.dataset.value === value) {
+          textSpan.textContent = option.textContent;
+          option.classList.add('selected');
+          hiddenSelect.value = value;
+        } else {
+          option.classList.remove('selected');
+        }
+      });
+    };
+
+    // 初始化所有自定义下拉框
+    console.log('Initializing custom selects...');
+    initCustomSelect('learningStyleSelect');
+    initCustomSelect('preferredPaceSelect');
+    console.log('Custom selects initialized');
+
+    // 查看更多按钮事件
+    abilityViewMore.addEventListener('click', () => {
+      expandedSections.ability = !expandedSections.ability;
+      renderAbilityProfile(fullAbilityData);
+    });
+
+    pathViewMore.addEventListener('click', () => {
+      expandedSections.path = !expandedSections.path;
+      renderLearningPath(fullPathData);
+    });
+
+    questionViewMore.addEventListener('click', () => {
+      expandedSections.question = !expandedSections.question;
+      renderQuestionRecommendations(fullQuestionData);
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        const me = await authedFetch("/auth/me");
+        userAvatar.textContent = me.username.charAt(0).toUpperCase();
+        await loadOverview();
+      } catch (error) {
+        clearAuth();
+        window.location.href = "/";
+      }
+    };
+
+    bootstrap();
+  </script>
+</body>
+</html>

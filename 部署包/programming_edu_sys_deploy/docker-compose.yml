@@ -1,0 +1,36 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: programming-edu-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8000
+      SERVER_RELOAD: "false"
+      SERVER_WORKERS: ${SERVER_WORKERS:-1}
+      SERVER_APP_DB: /app/server/runtime/app.db
+      LOG_FILE: /app/logs/system.log
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./server/runtime:/app/server/runtime
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: programming-edu-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

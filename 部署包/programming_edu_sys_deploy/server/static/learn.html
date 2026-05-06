@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学习中心 - CodeMentor</title>
+  <link rel="stylesheet" href="/static/edu_ide.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      background: #f9f8f6;
+      color: #3a3a3a;
+      min-height: 100vh;
+    }
+
+    /* ========== 顶部导航栏 ========== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e5e2dd;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.04), 0px 1px 2px rgba(0,0,0,0.02);
+      background: #ffffff;
+      padding: 0 32px;
+      height: 65px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #6b9ab8;
+      width: 36px;
+      height: 36px;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .topbar-nav {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 8px 16px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    .nav-btn.active {
+      background: #e8f1f8;
+      color: #7aa8c7;
+    }
+
+    .nav-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #5b8aaf, #4a5568);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* ========== 主体布局 ========== */
+    .learning-page {
+      display: flex;
+      align-items: flex-start;
+      background: #f9f8f6;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ========== 左侧章节目录 ========== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      border-right: 1px solid #e5e2dd;
+      background: #ffffff;
+      padding: 20px 16px 0;
+      width: 240px;
+      min-height: calc(100vh - 65px);
+      row-gap: 16px;
+    }
+
+    .sidebar-header {
+      padding: 0 8px;
+    }
+
+    .chapter-list {
+      row-gap: 8px;
+    }
+
+    .chapter-toggle {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .section-list {
+      margin-left: 8px;
+      padding-left: 12px;
+      row-gap: 2px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 4px;
+    }
+
+    .sidebar-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .sidebar-subtitle {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .chapter-list {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .chapter-item {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+    }
+
+    .chapter-toggle {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+      border-radius: 8px;
+      padding: 10px 12px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.2s ease;
+    }
+
+    .chapter-toggle:hover {
+      background: #f9f8f6;
+    }
+
+    .chapter-toggle svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    .chapter-toggle.collapsed svg {
+      transform: rotate(-90deg);
+    }
+
+    .section-list {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      margin-top: 6px;
+      margin-left: 12px;
+      border-left: 2px solid #e5e2dd;
+      padding-left: 16px;
+      row-gap: 4px;
+    }
+
+    .section-item {
+      display: flex;
+      align-items: center;
+      column-gap: 10px;
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .section-item:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    .section-item.active {
+      background: #e8f1f8;
+      color: #6b9ab8;
+      border-left: 3px solid #6b9ab8;
+      font-weight: 500;
+    }
+
+    .section-item.planned {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .section-item.planned:hover {
+      background: transparent;
+    }
+
+    .section-item svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .section-item.completed svg {
+      color: #7a9b87;
+    }
+
+    .section-item.pending svg {
+      color: #e5e2dd;
+    }
+
+    /* ========== 中间内容区 ========== */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      padding: 32px;
+      width: 600px;
+      min-height: calc(100vh - 65px);
+      row-gap: 32px;
+      overflow-y: auto;
+    }
+
+    .content-header {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .breadcrumb-item {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .breadcrumb-sep {
+      line-height: 16px;
+      color: #e5e2dd;
+      font-size: 12px;
+    }
+
+    .content-title-row {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .content-title {
+      line-height: 32px;
+      color: #3a3a3a;
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .difficulty-badge {
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(139, 163, 119, 0.2);
+      border-radius: 8px;
+      background: rgba(139, 163, 119, 0.1);
+      padding: 3px 9px;
+      color: #8ba377;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .content-source {
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .knowledge-section {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 16px;
+    }
+
+    .section-heading {
+      line-height: 28px;
+      color: #3a3a3a;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .section-text {
+      line-height: 23px;
+      color: rgba(58, 58, 58, 0.8);
+      font-size: 14px;
+    }
+
+    .operator-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    .knowledge-item {
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 3px solid #6b9ab8;
+    }
+
+    .knowledge-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+
+    .knowledge-explanation {
+      margin-bottom: 16px;
+    }
+
+    .knowledge-explanation p {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #4a4a4a;
+      margin-bottom: 8px;
+    }
+
+    .knowledge-explanation p:last-child {
+      margin-bottom: 0;
+    }
+
+    .knowledge-code-wrapper {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .knowledge-code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .operator-row {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      column-gap: 12px;
+    }
+
+    .operator-label {
+      width: 64px;
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .operator-code {
+      display: flex;
+      align-items: center;
+      border-radius: 8px;
+      background: #f0ede8;
+      padding: 6px 12px;
+      color: rgba(58, 58, 58, 0.8);
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 12px;
+    }
+
+    .code-section {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      row-gap: 12px;
+    }
+
+    .code-section-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .code-block-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-self: stretch;
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      background: rgba(240, 237, 232, 0.5);
+      overflow: hidden;
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      border-bottom: 1px solid #e5e2dd;
+      background: rgba(240, 237, 232, 0.8);
+      padding: 14px 16px 10px;
+    }
+
+    .code-block-header span {
+      line-height: 16px;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .code-block-body {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      padding: 18px 16px 38px;
+      overflow: hidden;
+    }
+
+    .code-block-body pre {
+      width: 100%;
+      line-height: 20px;
+      color: rgba(58, 58, 58, 0.9);
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+
+    /* ========== 右侧练习区 ========== */
+    .exercise-panel {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      border-left: 1px solid #e5e2dd;
+      background: #ffffff;
+      overflow: hidden;
+      flex: 1;
+      min-height: calc(100vh - 65px);
+    }
+
+    .exercise-header {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: flex-start;
+      align-self: stretch;
+      border-bottom: 1px solid #e5e2dd;
+      padding: 24px 24px 0;
+      height: 104px;
+      row-gap: 8px;
+    }
+
+    .exercise-title {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .exercise-desc {
+      line-height: 23px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .exercise-body {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      align-items: center;
+      align-self: stretch;
+      padding: 24px;
+      flex: 1;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      justify-content: space-between;
+      height: 32px;
+    }
+
+    .editor-label {
+      line-height: 20px;
+      color: #8a8a8a;
+      font-size: 14px;
+    }
+
+    .editor-reset-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 6px 12px;
+      width: 74px;
+      min-width: 74px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .editor-reset-btn:hover {
+      background: #f9f8f6;
+    }
+
+    .editor-reset-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .code-textarea {
+      margin-top: 12px;
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      background: rgba(240, 237, 232, 0.3);
+      width: 100%;
+      min-height: 400px;
+      padding: 16px;
+      font-family: Consolas, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #3a3a3a;
+      outline: none;
+      resize: vertical;
+    }
+
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 8px;
+      margin-top: 16px;
+      border-radius: 8px;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.1), 0px 1px 2px -1px rgba(0,0,0,0.1);
+      background: #6b9ab8;
+      padding: 10px 20px;
+      width: 100%;
+      border: none;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      background: #5a8aa7;
+    }
+
+    /* 划词提问浮动按钮 */
+    .selection-popover {
+      position: fixed;
+      z-index: 20;
+      display: none;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #10243d;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.28);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .selection-popover.show {
+      display: block;
+    }
+
+    .selection-popover button {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+      border: none;
+      cursor: pointer;
+    }
+
+    .selection-dock {
+      position: fixed;
+      right: 24px;
+      top: 80px;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #e5e2dd;
+      box-shadow: 0 12px 28px rgba(20, 36, 52, 0.12);
+      color: #8a8a8a;
+      font-size: 13px;
+    }
+
+    .selection-dock button {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #f0f8f5;
+      color: #7a9b87;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .ask-panel {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 30;
+      width: min(420px, calc(100vw - 32px));
+      max-height: min(720px, calc(100vh - 48px));
+      display: none;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid #e5e2dd;
+      box-shadow: 0 24px 58px rgba(20, 36, 52, 0.22);
+    }
+
+    .ask-panel.open {
+      display: grid;
+    }
+
+    .ask-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ask-head h3 {
+      margin: 0 0 4px;
+      font-size: 17px;
+      color: #3a3a3a;
+    }
+
+    .ask-head .meta {
+      color: #8a8a8a;
+      font-size: 13px;
+    }
+
+    .ask-close-btn {
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #f0f0f0;
+      color: #3a3a3a;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .ask-selected {
+      border-left: 4px solid #6b9ab8;
+      border-radius: 12px;
+      background: #f3f8ff;
+      padding: 10px 12px;
+      color: #3a3a3a;
+      font-size: 13px;
+      line-height: 1.7;
+      max-height: 120px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .ask-selected-input,
+    .ask-input {
+      width: 100%;
+      min-height: 70px;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #ffffff;
+      color: #3a3a3a;
+      font: 13px/1.7 Consolas, "Microsoft YaHei", sans-serif;
+      resize: vertical;
+      outline: none;
+    }
+
+    .ask-input {
+      min-height: 78px;
+    }
+
+    .ask-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ask-actions button {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .ask-actions .primary {
+      background: #6b9ab8;
+      color: #fff;
+    }
+
+    .ask-actions .ghost {
+      background: #f0f0f0;
+      color: #3a3a3a;
+    }
+
+    .ask-answer {
+      overflow: auto;
+      border-radius: 14px;
+      background: #f9f8f6;
+      padding: 12px;
+      color: #3a3a3a;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      min-height: 88px;
+      font-size: 13px;
+    }
+
+    /* 结果反馈 */
+    .result-box {
+      margin-top: 16px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #f9f8f6;
+      color: #8a8a8a;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      width: 100%;
+    }
+
+    .result-box.ok {
+      background: #ecfdf3;
+      color: #1f8f4c;
+      border: 1px solid #b7ebc5;
+    }
+
+    .result-box.bad {
+      background: #fff5f5;
+      color: #c53030;
+      border: 1px solid #fed7d7;
+    }
+
+    /* 测试用例表格 */
+    .test-table-wrap {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #e5e2dd;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1200px) {
+      .content-area {
+        width: 480px;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .content-area {
+        width: 400px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .learning-page {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid #e5e2dd;
+      }
+      .content-area {
+        width: 100%;
+      }
+      .exercise-panel {
+        border-left: none;
+        border-top: 1px solid #e5e2dd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">&lt;/&gt;</div>
+      <span class="logo-text">CodeMentor</span>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/learn" class="nav-btn active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+        学习中心
+      </a>
+      <a href="/questions" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        题库
+      </a>
+      <a href="/chat" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI 助手
+      </a>
+      <a href="/profile" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        个人中心
+      </a>
+    </nav>
+    <div class="topbar-user">
+      <div class="user-avatar" id="userAvatar">U</div>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <div class="learning-page">
+    <!-- 左侧章节目录 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">课程目录</div>
+        <div class="sidebar-subtitle" id="courseSubtitle">Python 编程基础</div>
+      </div>
+      <div class="chapter-list" id="chapterList"></div>
+    </aside>
+
+    <!-- 中间内容区 -->
+    <main class="content-area" id="contentArea">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <span class="breadcrumb-item" id="breadcrumbChapter">第1章</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-item" id="breadcrumbSection">运算符与表达式</span>
+        </div>
+        <div class="content-title-row">
+          <h1 class="content-title" id="lessonTitle">运算符与表达式</h1>
+          <span class="difficulty-badge" id="difficultyBadge">基础</span>
+        </div>
+        <p class="content-source" id="lessonSource">教材来源: 《Python程序设计》第2章</p>
+      </div>
+
+      <div class="knowledge-section" id="knowledgeSection">
+        <h2 class="section-heading" id="knowledgeSectionTitle">知识点</h2>
+        <p class="section-text" id="lessonSummary">请选择左侧课程开始学习。</p>
+        <div class="operator-grid" id="knowledgePoints"></div>
+      </div>
+
+      <div class="code-section">
+        <h2 class="code-section-title">示例代码</h2>
+        <div class="code-block-wrapper">
+          <div class="code-block-header">
+            <span>Python</span>
+          </div>
+          <div class="code-block-body">
+            <pre id="codeExample">a = 10
+b = 3
+print(a + b)   # 13
+print(a // b)  # 3
+print(a % b)   # 1
+print(a ** b)  # 1000</pre>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右侧练习区 -->
+    <aside class="exercise-panel">
+      <div class="exercise-header">
+        <div class="exercise-title" id="exerciseTitle">练习: 计算圆的面积</div>
+        <div class="exercise-desc" id="exerciseDesc">编写一个程序,输入半径,计算并输出圆的面积。(π取3.14)</div>
+      </div>
+      <div class="exercise-body">
+        <div class="editor-header">
+          <span class="editor-label">代码编辑器</span>
+          <button class="editor-reset-btn" id="restoreLastBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            重置
+          </button>
+        </div>
+        <textarea class="code-textarea" id="codeEditor" spellcheck="false"></textarea>
+        <button class="submit-btn" id="submitBtn" type="button">提交判题</button>
+        <div class="result-box" id="resultBox">请先阅读知识点并完成代码，然后点击"提交判题"。</div>
+        <div class="test-table-wrap" id="testTableWrap"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 划词提问 -->
+  <div class="selection-popover" id="selectionPopover">
+    <button type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">问问智能体</button>
+  </div>
+
+  <div class="selection-dock">
+    <span>选中文字后可提问</span>
+    <button type="button" onclick="window.openLearningAskPanel && window.openLearningAskPanel()">划词提问</button>
+  </div>
+
+  <section class="ask-panel" id="askPanel" aria-live="polite">
+    <div class="ask-head">
+      <div>
+        <h3>解释选中文本</h3>
+        <div class="meta">不用离开当前知识点，直接把疑问问清楚。</div>
+      </div>
+      <button class="ask-close-btn" id="closeAskPanelBtn" type="button">关闭</button>
+    </div>
+    <div class="ask-selected" id="askSelectedText"></div>
+    <textarea class="ask-selected-input" id="askSelectedInput" placeholder="如果自动选中文本没有带过来，可以直接把要解释的文字粘贴到这里。"></textarea>
+    <textarea class="ask-input" id="askQuestionInput" placeholder="可以补充你的问题，比如：这里的 return 和 print 有什么区别？"></textarea>
+    <div class="ask-actions">
+      <button class="primary" type="button" onclick="window.askLearningSelection && window.askLearningSelection(true)">发送问题</button>
+      <button class="ghost" type="button" onclick="window.askLearningSelection && window.askLearningSelection(false)">直接解释这段</button>
+    </div>
+    <div class="ask-answer" id="askAnswerBox">选中一段文字后，我会在这里解释它。</div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+  <script src="/static/edu_ide.js"></script>
+  <script>
+    // ===== 变量定义 =====
+    const userAvatar = document.getElementById("userAvatar");
+    const courseSubtitle = document.getElementById("courseSubtitle");
+    const chapterList = document.getElementById("chapterList");
+    const breadcrumbChapter = document.getElementById("breadcrumbChapter");
+    const breadcrumbSection = document.getElementById("breadcrumbSection");
+    const lessonTitle = document.getElementById("lessonTitle");
+    const difficultyBadge = document.getElementById("difficultyBadge");
+    const lessonSource = document.getElementById("lessonSource");
+    const lessonSummary = document.getElementById("lessonSummary");
+    const knowledgeSectionTitle = document.getElementById("knowledgeSectionTitle");
+    const knowledgePoints = document.getElementById("knowledgePoints");
+    const codeExample = document.getElementById("codeExample");
+    const exerciseTitle = document.getElementById("exerciseTitle");
+    const exerciseDesc = document.getElementById("exerciseDesc");
+    const codeEditor = document.getElementById("codeEditor");
+
+    // ===== 工具函数 =====
+    const escapeHTML = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const restoreLastBtn = document.getElementById("restoreLastBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const resultBox = document.getElementById("resultBox");
+    const testTableWrap = document.getElementById("testTableWrap");
+    const selectionPopover = document.getElementById("selectionPopover");
+    const askPanel = document.getElementById("askPanel");
+    const closeAskPanelBtn = document.getElementById("closeAskPanelBtn");
+    const askSelectedText = document.getElementById("askSelectedText");
+    const askSelectedInput = document.getElementById("askSelectedInput");
+    const askQuestionInput = document.getElementById("askQuestionInput");
+    const askAnswerBox = document.getElementById("askAnswerBox");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+    let currentLessonId = null;
+    let currentCatalogId = null;
+    let currentLessonDetail = null;
+    let latestSubmissionCode = "";
+    let activeSelectedText = "";
+    let activeSelectionContext = "";
+    let lessonEnteredAt = Date.now();
+    let cachedChapters = [];  // 缓存章节数据用于重新渲染
+    let eduIDE = null;
+
+    // ===== 认证相关 =====
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      accessToken = null;
+      refreshToken = null;
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    // 检查 token 是否存在或过期
+    const expiresAt = localStorage.getItem("pes_expires_at");
+    const isExpired = expiresAt ? new Date(expiresAt) <= new Date() : false;
+    const needsLogin = !accessToken || !refreshToken || isExpired;
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        clearAuth();
+        throw new Error(data.detail || "登录已过期");
+      }
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = { ...(options.headers || {}) };
+      // 只在有 token 时添加 Authorization 头
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry && accessToken) {
+        try {
+          await refreshAuth();
+          return await authedFetch(url, options, false);
+        } catch (err) {
+          // 刷新失败，已经清除认证并跳转
+          return;
+        }
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    };
+
+    // ===== 章节渲染 =====
+    const renderChapters = (chapters) => {
+      chapterList.innerHTML = "";
+      for (const chapter of chapters) {
+        const chapterItem = document.createElement("div");
+        chapterItem.className = "chapter-item";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "chapter-toggle";
+        toggleBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          <span>${escapeHTML(chapter.title)}</span>
+        `;
+
+        const sectionList = document.createElement("div");
+        sectionList.className = "section-list";
+
+        for (const section of chapter.sections || []) {
+          const sectionBtn = document.createElement("button");
+          const isCompleted = section.status === "completed";
+          const isActive = section.lesson_id === currentCatalogId;
+          const isPlanned = section.status === "planned" || !section.lesson_id;
+          
+          sectionBtn.className = "section-item";
+          if (isActive) sectionBtn.classList.add("active");
+          if (isCompleted) sectionBtn.classList.add("completed");
+          if (isPlanned) sectionBtn.classList.add("planned");
+
+          sectionBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              ${isCompleted
+                ? '<path d="M20 6L9 17l-5-5"/>'
+                : isPlanned
+                  ? '<path d="M12 5v14M5 12h14"/>'
+                  : '<circle cx="12" cy="12" r="10"/>'}
+            </svg>
+            <span>${escapeHTML(section.title)}</span>
+            ${isPlanned ? '<span style="margin-left:auto;font-size:11px;color:#999;">(即将上线)</span>' : ''}
+          `;
+
+          sectionBtn.addEventListener("click", () => {
+            if (section.lesson_id && !isPlanned) {
+              loadLesson(section.lesson_id);
+            } else if (isPlanned) {
+              // 显示提示
+              lessonTitle.textContent = "课程准备中";
+              lessonSummary.textContent = `「${section.title}」课程正在准备中，敬请期待！`;
+              knowledgePoints.innerHTML = '';
+              codeExample.textContent = '';
+            }
+          });
+
+          sectionList.appendChild(sectionBtn);
+        }
+
+        toggleBtn.addEventListener("click", () => {
+          toggleBtn.classList.toggle("collapsed");
+          sectionList.style.display = sectionList.style.display === "none" ? "flex" : "none";
+        });
+
+        chapterItem.appendChild(toggleBtn);
+        chapterItem.appendChild(sectionList);
+        chapterList.appendChild(chapterItem);
+      }
+    };
+
+    // ===== 内容渲染 =====
+    const renderLessonDetail = (payload) => {
+      const lesson = payload.lesson;
+      const exercise = lesson.exercise;
+      currentLessonDetail = lesson;
+      currentLessonId = lesson.id;
+      currentCatalogId = lesson.id;
+
+      lessonTitle.textContent = lesson.title;
+      difficultyBadge.textContent = lesson.difficulty;
+      lessonSource.textContent = `教材来源: ${lesson.source.title}（${lesson.source.authority}）`;
+      lessonSummary.textContent = lesson.summary;
+      knowledgeSectionTitle.textContent = lesson.title;
+
+      // 知识点
+      knowledgePoints.innerHTML = "";
+      for (const kp of lesson.knowledge_points) {
+        const kpItem = document.createElement("div");
+        kpItem.className = "knowledge-item";
+        
+        // 标题
+        const kpTitle = document.createElement("h3");
+        kpTitle.className = "knowledge-title";
+        kpTitle.textContent = kp.title;
+        kpItem.appendChild(kpTitle);
+        
+        // 解释说明（将换行符转换为段落）
+        if (kp.explanation) {
+          const explanationDiv = document.createElement("div");
+          explanationDiv.className = "knowledge-explanation";
+          // 按段落分割并创建p标签
+          const paragraphs = kp.explanation.split('\n').filter(p => p.trim());
+          paragraphs.forEach(para => {
+            const p = document.createElement("p");
+            p.textContent = para.trim();
+            explanationDiv.appendChild(p);
+          });
+          kpItem.appendChild(explanationDiv);
+        }
+        
+        // 代码示例
+        if (kp.example) {
+          const codeWrapper = document.createElement("div");
+          codeWrapper.className = "knowledge-code-wrapper";
+          const pre = document.createElement("pre");
+          pre.className = "knowledge-code";
+          pre.textContent = kp.example;
+          codeWrapper.appendChild(pre);
+          kpItem.appendChild(codeWrapper);
+        }
+        
+        knowledgePoints.appendChild(kpItem);
+      }
+
+      // 代码示例区域显示第一个知识点的示例
+      if (lesson.knowledge_points.length > 0 && lesson.knowledge_points[0].example) {
+        codeExample.textContent = lesson.knowledge_points[0].example;
+      }
+
+      // 练习
+      exerciseTitle.textContent = `练习: ${exercise.title}`;
+      exerciseDesc.textContent = exercise.description;
+
+      // 编辑器代码
+      latestSubmissionCode = (payload.latest_submission && payload.latest_submission.code) || "";
+      codeEditor.value = latestSubmissionCode || exercise.starter_code || "";
+
+      // 结果
+      if (payload.latest_submission) {
+        const latest = payload.latest_submission;
+        resultBox.className = `result-box ${latest.passed ? "ok" : "bad"}`;
+        resultBox.textContent = `判题结果：${latest.passed ? "通过" : "未通过"}\n得分：${latest.score}\n反馈：${latest.feedback || "暂无详细反馈"}`;
+      } else {
+        resultBox.className = "result-box";
+        resultBox.textContent = "请先阅读知识点并完成代码，然后点击\"提交判题\"。";
+      }
+      testTableWrap.innerHTML = "";
+    };
+
+    // ===== 提交判题 =====
+    const submitLesson = async () => {
+      if (!currentLessonId) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "判题中...";
+      resultBox.className = "result-box";
+      resultBox.textContent = "正在调用智能体判题，请稍候...";
+      testTableWrap.innerHTML = "";
+
+      try {
+        const payload = await authedFetch("/learning/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lesson_id: currentLessonId, code: codeEditor.value })
+        });
+        latestSubmissionCode = codeEditor.value;
+        resultBox.className = `result-box ${payload.passed ? "ok" : "bad"}`;
+        resultBox.textContent = `判题结果：${payload.passed ? "通过" : "未通过"}\n得分：${payload.score}\n反馈：${payload.feedback || "暂无详细反馈"}`;
+
+        // 测试用例表格
+        const testResults = (payload.hidden_test_result || {}).test_results || [];
+        if (testResults.length > 0) {
+          const rows = testResults.map(item => `
+            <tr><td>${escapeHTML(item.call)}</td><td>${escapeHTML(item.expected)}</td><td>${escapeHTML(item.actual)}</td><td>${item.passed ? "通过" : "未通过"}</td></tr>
+          `).join("");
+          testTableWrap.innerHTML = `
+            <table><thead><tr><th>测试调用</th><th>期望</th><th>实际</th><th>结果</th></tr></thead>
+            <tbody>${rows}</tbody></table>`;
+        }
+      } catch (error) {
+        resultBox.className = "result-box bad";
+        resultBox.textContent = `提交失败：${error.message}`;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交判题";
+      }
+    };
+
+    // ===== 划词提问 =====
+    console.log('Initializing selection popover...');
+    console.log('selectionPopover:', selectionPopover);
+    console.log('askPanel:', askPanel);
+
+    const hideSelectionPopover = () => {
+      console.log('Hiding popover');
+      selectionPopover.classList.remove("show");
+    };
+    const clearActiveSelection = () => { activeSelectedText = ""; activeSelectionContext = ""; };
+    const normalizeSelectionText = (text) => text.replace(/\s+/g, " ").trim();
+
+    const captureCurrentSelection = (options = {}) => {
+      const preserveExisting = Boolean(options.preserveExisting);
+      const selection = window.getSelection();
+      console.log('Capturing selection:', selection ? selection.toString() : 'null');
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+      const selectedText = normalizeSelectionText(selection.toString());
+      if (!selectedText || selectedText.length < 2) {
+        if (!preserveExisting) clearActiveSelection();
+        return false;
+      }
+      activeSelectedText = selectedText.slice(0, 1200);
+      console.log('Captured text:', activeSelectedText);
+      return true;
+    };
+
+    const updateSelectionPopover = () => {
+      console.log('Updating popover...');
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) { hideSelectionPopover(); return; }
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      console.log('Selection rect:', rect);
+      if (!captureCurrentSelection()) { hideSelectionPopover(); return; }
+      selectionPopover.style.left = `${Math.min(window.innerWidth - 140, Math.max(12, rect.left + rect.width / 2 - 52))}px`;
+      selectionPopover.style.top = `${Math.max(12, rect.top - 46)}px`;
+      selectionPopover.classList.add("show");
+      console.log('Popover shown');
+    };
+
+    const openAskPanel = () => {
+      captureCurrentSelection({ preserveExisting: true });
+      if (!activeSelectedText) {
+        askPanel.classList.add("open");
+        askSelectedText.textContent = "还没有选中文本。请先在知识点讲解里选中一小段内容。";
+        return;
+      }
+      askSelectedText.textContent = activeSelectedText;
+      askSelectedInput.value = activeSelectedText;
+      askQuestionInput.value = "";
+      askAnswerBox.textContent = "可以直接发送，也可以补充一句你具体想问什么。";
+      askPanel.classList.add("open");
+      hideSelectionPopover();
+    };
+
+    const askSelection = async (useCustomQuestion) => {
+      const textToAsk = (askSelectedInput.value || activeSelectedText).trim();
+      if (!currentLessonId) { askAnswerBox.textContent = "课程还没有加载完成。"; return; }
+      if (!textToAsk) { askPanel.classList.add("open"); return; }
+      activeSelectedText = textToAsk.slice(0, 1200);
+      askAnswerBox.textContent = "智能体正在解释这段内容，请稍等。";
+      try {
+        const payload = await authedFetch("/learning/ask-selection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lesson_id: currentLessonId,
+            selected_text: activeSelectedText,
+            question: useCustomQuestion ? askQuestionInput.value : "",
+            surrounding_context: currentLessonDetail ? currentLessonDetail.summary : ""
+          })
+        });
+        askAnswerBox.textContent = payload.response || "智能体暂时没有返回解释。";
+      } catch (error) {
+        askAnswerBox.textContent = `提问失败：${error.message}`;
+      }
+    };
+
+    window.openLearningAskPanel = openAskPanel;
+    window.askLearningSelection = askSelection;
+
+    // ===== 初始化 =====
+    const getUrlParam = (name) => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    };
+
+    const bootstrap = async () => {
+      try {
+        // 先加载课程列表（公开访问）
+        const lessons = await authedFetch("/learning/lessons");
+        cachedChapters = lessons.chapters || [];
+        renderChapters(cachedChapters);
+
+        // 尝试获取用户信息（需要登录）
+        try {
+          const me = await authedFetch("/auth/me");
+          userAvatar.textContent = me.username.charAt(0).toUpperCase();
+        } catch (authErr) {
+          // 未登录，显示默认头像
+          userAvatar.textContent = "?";
+        }
+
+        // 优先从 URL 参数加载指定课程
+        const urlLessonId = getUrlParam("lesson_id");
+        if (urlLessonId) {
+          await loadLesson(urlLessonId);
+        }
+        // 不自动加载第一个课程，让用户自己选择
+      } catch (err) {
+        console.error("加载失败:", err);
+        // 只在课程目录为空时显示错误
+        if (!chapterList.innerHTML.trim()) {
+          chapterList.innerHTML = '<div style="padding: 20px; color: #999;">加载课程失败，请刷新页面重试</div>';
+        }
+      }
+    };
+
+    const loadLesson = async (lessonId) => {
+      try {
+        const detail = await authedFetch(`/learning/lessons/${lessonId}`);
+        renderLessonDetail(detail);
+        // 重新渲染章节列表以更新选中状态
+        if (cachedChapters.length > 0) {
+          renderChapters(cachedChapters);
+        }
+        // 更新 URL 但不刷新页面
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set("lesson_id", lessonId);
+        window.history.pushState({}, "", newUrl);
+      } catch (err) {
+        console.error("加载课程详情失败:", err);
+        // 显示错误提示但不影响课程目录
+        lessonTitle.textContent = "加载失败";
+        lessonSummary.textContent = "该课程暂时无法加载，请选择其他课程。";
+      }
+    };
+
+    // ===== 事件监听（在 bootstrap 之后绑定）=====
+    document.addEventListener("selectionchange", () => {
+      window.clearTimeout(window.__learningSelectionTimer);
+      window.__learningSelectionTimer = window.setTimeout(updateSelectionPopover, 120);
+    });
+    document.addEventListener("mouseup", () => window.setTimeout(updateSelectionPopover, 20));
+    document.addEventListener("mousedown", (e) => {
+      if (!selectionPopover.contains(e.target) && !askPanel.contains(e.target)) hideSelectionPopover();
+    });
+    closeAskPanelBtn.addEventListener("click", () => askPanel.classList.remove("open"));
+    restoreLastBtn.addEventListener("click", () => {
+      codeEditor.value = latestSubmissionCode || (currentLessonDetail ? currentLessonDetail.exercise.starter_code : "");
+    });
+    submitBtn.addEventListener("click", submitLesson);
+    codeEditor.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") { e.preventDefault(); const s = codeEditor.selectionStart; codeEditor.value = codeEditor.value.slice(0, s) + "    " + codeEditor.value.slice(codeEditor.selectionEnd); codeEditor.selectionStart = codeEditor.selectionEnd = s + 4; }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); submitLesson(); }
+    });
+
+    bootstrap();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>题库大全 - CodeMentor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      background: #f9f8f6;
+      color: #3a3a3a;
+      min-height: 100vh;
+    }
+
+    /* ========== 顶部导航栏 ========== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e5e2dd;
+      box-shadow: 0px 1px 3px rgba(0,0,0,0.04), 0px 1px 2px rgba(0,0,0,0.02);
+      background: #ffffff;
+      padding: 0 32px;
+      height: 65px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+    }
+
+    .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #6b9ab8;
+      width: 36px;
+      height: 36px;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      line-height: 24px;
+      color: #3a3a3a;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .topbar-nav {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 6px;
+      border-radius: 8px;
+      padding: 8px 16px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #f9f8f6;
+      color: #3a3a3a;
+    }
+
+    .nav-btn.active {
+      background: #e8f1f8;
+      color: #7aa8c7;
+    }
+
+    .nav-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #5b8aaf, #4a5568);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: #f9f8f6;
+      color: #c53030;
+    }
+
+    /* ========== 主体布局 ========== */
+    .questions-page {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+      padding: 24px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ========== 左侧边栏 ========== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar-card {
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #3a3a3a;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-meta {
+      font-size: 13px;
+      color: #8a8a8a;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #3a3a3a;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid #e5e2dd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      color: #3a3a3a;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #6b9ab8;
+    }
+
+    /* ========== 完全自定义下拉框组件 ========== */
+    .custom-select {
+      position: relative;
+      width: 100%;
+      user-select: none;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1.5px solid #e5e2dd;
+      border-radius: 10px;
+      padding: 12px 16px;
+      background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+      color: #3a3a3a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .custom-select:hover .custom-select-trigger {
+      border-color: #c5d5e0;
+      background: linear-gradient(145deg, #ffffff 0%, #f5f8fa 100%);
+      box-shadow: 0 4px 12px rgba(107, 154, 184, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .custom-select.open .custom-select-trigger {
+      border-color: #6b9ab8;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(107, 154, 184, 0.15), 0 4px 12px rgba(107, 154, 184, 0.1);
+    }
+
+    .custom-select-arrow {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid #8a8a8a;
+      border-bottom: 2px solid #8a8a8a;
+      transform: rotate(45deg);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-left: 12px;
+      flex-shrink: 0;
+    }
+
+    .custom-select:hover .custom-select-arrow {
+      border-color: #6b9ab8;
+    }
+
+    .custom-select.open .custom-select-arrow {
+      transform: rotate(225deg);
+      border-color: #6b9ab8;
+    }
+
+    .custom-select-options {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px) scale(0.96);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .custom-select.open .custom-select-options {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .custom-option {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      color: #3a3a3a;
+      margin-bottom: 4px;
+    }
+
+    .custom-option:last-child {
+      margin-bottom: 0;
+    }
+
+    .custom-option:hover {
+      background: linear-gradient(135deg, #f0f7fc 0%, #e8f1f8 100%);
+      color: #5a8aa7;
+    }
+
+    .custom-option.selected {
+      background: linear-gradient(135deg, #e8f1f8 0%, #d4e7f4 100%);
+      color: #4a7a97;
+      font-weight: 600;
+    }
+
+    .custom-option.selected::before {
+      content: '✓';
+      margin-right: 10px;
+      font-weight: 700;
+      color: #6b9ab8;
+    }
+
+    .custom-select select {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+    }
+
+    select option {
+      padding: 12px 16px;
+      font-size: 14px;
+      background: #ffffff;
+      color: #3a3a3a;
+      border: none;
+    }
+
+    select option:hover,
+    select option:focus,
+    select option:checked {
+      background: linear-gradient(145deg, #e8f1f8 0%, #f0f7fc 100%);
+      color: #5a8aa7;
+    }
+
+    select:disabled {
+      background: #f5f5f5;
+      color: #b0b0b0;
+      cursor: not-allowed;
+      border-color: #e0e0e0;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 10px 16px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #6b9ab8;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #5a8aa7;
+    }
+
+    .btn-secondary {
+      background: #7a9b87;
+      color: #ffffff;
+    }
+
+    .btn-secondary:hover {
+      background: #6a8b77;
+    }
+
+    .chapter-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chapter-btn {
+      border: 1px solid #e5e2dd;
+      border-radius: 8px;
+      background: #fff;
+      text-align: left;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chapter-btn:hover {
+      border-color: #c5d5e0;
+      background: #f9f8f6;
+    }
+
+    .chapter-btn.active {
+      border-color: #7a9b87;
+      background: #f0f8f5;
+      color: #7a9b87;
+    }
+
+    .chapter-btn-title {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .chapter-btn-meta {
+      font-size: 12px;
+      color: #8a8a8a;
+      margin-top: 4px;
+    }
+
+    /* ========== 右侧主内容 ========== */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel {
+      background: #ffffff;
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #3a3a3a;
+      margin-bottom: 6px;
+    }
+
+    .panel .meta {
+      font-size: 13px;
+      color: #8a8a8a;
+      margin-bottom: 16px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 16px;
+      background: #f9f8f6;
+      border-radius: 10px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #7a9b87;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #8a8a8a;
+      margin-top: 4px;
+    }
+
+    .question-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .question-card {
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      padding: 16px;
+      background: #fff;
+      display: grid;
+      gap: 10px;
+    }
+
+    .question-card.highlight {
+      border-color: #7a9b87;
+      background: #f0f8f5;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-weight: 500;
+      color: #3a3a3a;
+      line-height: 1.4;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #f0f8f5;
+      color: #7a9b87;
+      white-space: nowrap;
+    }
+
+    .pill.warn {
+      background: #fff7df;
+      color: #b7791f;
+    }
+
+    .pill.ok {
+      background: #ecfdf3;
+      color: #1f8f4c;
+    }
+
+    .pill.muted {
+      background: #f0f0f0;
+      color: #8a8a8a;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+      color: #8a8a8a;
+    }
+
+    .tag-list {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #f0f0f0;
+      color: #8a8a8a;
+      font-size: 12px;
+    }
+
+    .code {
+      background: #0f172a;
+      color: #e5edf9;
+      border-radius: 8px;
+      padding: 12px;
+      white-space: pre-wrap;
+      overflow: auto;
+      font: 13px/1.7 Consolas, "Courier New", monospace;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #e5e2dd;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: var(--width, 0%);
+      border-radius: inherit;
+      background: #7a9b87;
+    }
+
+    .knowledge-group {
+      border: 1px solid #e5e2dd;
+      border-radius: 12px;
+      padding: 20px;
+      background: #fff;
+      display: grid;
+      gap: 16px;
+    }
+
+    .group-header {
+      display: grid;
+      gap: 10px;
+    }
+
+    .group-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .group-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #3a3a3a;
+    }
+
+    .group-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .section-block {
+      border: 1px solid #e5e2dd;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .section-block.empty {
+      border-style: dashed;
+      background: #f9f8f6;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .section-title {
+      font-weight: 500;
+      color: #3a3a3a;
+    }
+
+    .section-body {
+      margin-top: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .quiz-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1100px) {
+      .questions-page {
+        grid-template-columns: 280px minmax(0, 1fr);
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .question-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .questions-page {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">&lt;/&gt;</div>
+      <span class="logo-text">CodeMentor</span>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/learn" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+        学习中心
+      </a>
+      <a href="/questions" class="nav-btn active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        题库
+      </a>
+      <a href="/chat" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI 助手
+      </a>
+      <a href="/profile" class="nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        个人中心
+      </a>
+    </nav>
+    <div class="topbar-user">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <button class="logout-btn" id="logoutBtn" type="button">退出</button>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <div class="questions-page">
+    <!-- 左侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-title">题库大全</div>
+        <div class="sidebar-meta" id="userMeta">正在加载...</div>
+      </div>
+
+      <div class="sidebar-card">
+        <div class="sidebar-title" style="margin-bottom: 12px;">筛选题库</div>
+        <label style="margin-bottom: 10px;">
+          主题
+          <div class="custom-select" id="topicFilterSelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">全部主题</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="topicFilterOptions">
+              <div class="custom-option selected" data-value="all">全部主题</div>
+            </div>
+            <select id="topicFilter" style="display: none;"><option value="all">全部主题</option></select>
+          </div>
+        </label>
+        <label style="margin-bottom: 10px;">
+          难度
+          <div class="custom-select" id="difficultyFilterSelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">全部难度</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="difficultyFilterOptions">
+              <div class="custom-option selected" data-value="all">全部难度</div>
+              <div class="custom-option" data-value="beginner">beginner</div>
+              <div class="custom-option" data-value="intermediate">intermediate</div>
+              <div class="custom-option" data-value="advanced">advanced</div>
+            </div>
+            <select id="difficultyFilter" style="display: none;">
+              <option value="all">全部难度</option>
+              <option value="beginner">beginner</option>
+              <option value="intermediate">intermediate</option>
+              <option value="advanced">advanced</option>
+            </select>
+          </div>
+        </label>
+        <label style="margin-bottom: 10px;">
+          类型
+          <div class="custom-select" id="typeFilterSelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">全部类型</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="typeFilterOptions">
+              <div class="custom-option selected" data-value="all">全部类型</div>
+              <div class="custom-option" data-value="coding">coding</div>
+              <div class="custom-option" data-value="debugging">debugging</div>
+              <div class="custom-option" data-value="algorithm">algorithm</div>
+            </div>
+            <select id="typeFilter" style="display: none;">
+              <option value="all">全部类型</option>
+              <option value="coding">coding</option>
+              <option value="debugging">debugging</option>
+              <option value="algorithm">algorithm</option>
+            </select>
+          </div>
+        </label>
+        <label style="margin-bottom: 12px;">
+          关键词
+          <input id="keywordInput" placeholder="比如：return、列表、字典">
+        </label>
+        <button class="btn btn-primary" id="searchBtn" type="button">查看匹配题目</button>
+      </div>
+
+      <div class="sidebar-card">
+        <div class="sidebar-title">章节目录</div>
+        <div class="sidebar-meta" style="margin-bottom: 12px;">先选章节，再看对应知识点和题目。</div>
+        <div class="chapter-nav" id="chapterNav"></div>
+      </div>
+
+      <div class="sidebar-card">
+        <div class="sidebar-title" style="margin-bottom: 12px;">生成小测</div>
+        <label style="margin-bottom: 10px;">
+          小测主题
+          <div class="custom-select" id="quizTopicSelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">自动匹配当前进度</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="quizTopicOptions">
+              <div class="custom-option selected" data-value="auto">自动匹配当前进度</div>
+            </div>
+            <select id="quizTopic" style="display: none;"><option value="auto">自动匹配当前进度</option></select>
+          </div>
+        </label>
+        <label style="margin-bottom: 10px;">
+          小测难度
+          <div class="custom-select" id="quizDifficultySelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">自动匹配当前水平</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="quizDifficultyOptions">
+              <div class="custom-option selected" data-value="auto">自动匹配当前水平</div>
+              <div class="custom-option" data-value="beginner">beginner</div>
+              <div class="custom-option" data-value="intermediate">intermediate</div>
+              <div class="custom-option" data-value="advanced">advanced</div>
+            </div>
+            <select id="quizDifficulty" style="display: none;">
+              <option value="auto">自动匹配当前水平</option>
+              <option value="beginner">beginner</option>
+              <option value="intermediate">intermediate</option>
+              <option value="advanced">advanced</option>
+            </select>
+          </div>
+        </label>
+        <label style="margin-bottom: 10px;">
+          题目数量
+          <div class="custom-select" id="quizCountSelect">
+            <div class="custom-select-trigger">
+              <span class="custom-select-text">5 题</span>
+              <div class="custom-select-arrow"></div>
+            </div>
+            <div class="custom-select-options" id="quizCountOptions">
+              <div class="custom-option" data-value="3">3 题</div>
+              <div class="custom-option selected" data-value="5">5 题</div>
+              <div class="custom-option" data-value="8">8 题</div>
+            </div>
+            <select id="quizCount" style="display: none;">
+              <option value="3">3 题</option>
+              <option value="5" selected>5 题</option>
+              <option value="8">8 题</option>
+            </select>
+          </div>
+        </label>
+        <label style="margin-bottom: 12px;">
+          需求描述
+          <textarea id="quizRequirement" placeholder="比如：多给我几道 return 和函数参数相关的题"></textarea>
+        </label>
+        <button class="btn btn-secondary" id="generateQuizBtn" type="button">生成个性化小测</button>
+      </div>
+    </aside>
+
+    <!-- 右侧主内容 -->
+    <main class="main-content">
+      <div class="panel">
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-value" id="totalQuestions">0</div>
+            <div class="stat-label">题库总量</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="completedQuestions">0</div>
+            <div class="stat-label">已完成题目</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="recommendedDifficulty">-</div>
+            <div class="stat-label">推荐难度</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="levelName">-</div>
+            <div class="stat-label">当前水平</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>为你推荐</h2>
+        <div class="meta">系统会根据学习进度、完成度和得分，为你优先展示当前最适合的题。</div>
+        <div class="question-grid" id="recommendedList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>按知识点练习</h2>
+        <div class="meta">每个知识点下方展示对应题目、完成状态、最好得分和累计用时。</div>
+        <div id="knowledgeGroupList"></div>
+      </div>
+
+      <div class="panel">
+        <h2 id="quizTitle">个性化小测</h2>
+        <div class="meta" id="quizMeta">选择需求后生成小测。</div>
+        <div class="quiz-list" id="quizList"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const userAvatar = document.getElementById("userAvatar");
+    const userMeta = document.getElementById("userMeta");
+    const topicFilter = document.getElementById("topicFilter");
+    const difficultyFilter = document.getElementById("difficultyFilter");
+    const typeFilter = document.getElementById("typeFilter");
+    const keywordInput = document.getElementById("keywordInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const quizTopic = document.getElementById("quizTopic");
+    const quizDifficulty = document.getElementById("quizDifficulty");
+    const quizCount = document.getElementById("quizCount");
+    const quizRequirement = document.getElementById("quizRequirement");
+    const generateQuizBtn = document.getElementById("generateQuizBtn");
+    const totalQuestions = document.getElementById("totalQuestions");
+    const completedQuestions = document.getElementById("completedQuestions");
+    const recommendedDifficulty = document.getElementById("recommendedDifficulty");
+    const levelName = document.getElementById("levelName");
+    const recommendedList = document.getElementById("recommendedList");
+    const knowledgeGroupList = document.getElementById("knowledgeGroupList");
+    const chapterNav = document.getElementById("chapterNav");
+    const quizTitle = document.getElementById("quizTitle");
+    const quizMeta = document.getElementById("quizMeta");
+    const quizList = document.getElementById("quizList");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let accessToken = localStorage.getItem("pes_token");
+    let refreshToken = localStorage.getItem("pes_refresh_token");
+    let currentQuestionGroups = [];
+    let activeGroupId = "";
+
+    if (!accessToken || !refreshToken) {
+      window.location.href = "/";
+    }
+
+    const escapeHTML = (value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const saveAuth = (data) => {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem("pes_token", data.access_token);
+      localStorage.setItem("pes_refresh_token", data.refresh_token);
+      localStorage.setItem("pes_username", data.username);
+      localStorage.setItem("pes_expires_at", data.expires_at);
+      localStorage.setItem("pes_refresh_expires_at", data.refresh_expires_at);
+    };
+
+    const clearAuth = () => {
+      localStorage.removeItem("pes_token");
+      localStorage.removeItem("pes_refresh_token");
+      localStorage.removeItem("pes_username");
+      localStorage.removeItem("pes_expires_at");
+      localStorage.removeItem("pes_refresh_expires_at");
+    };
+
+    const refreshAuth = async () => {
+      const response = await fetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "登录已过期");
+      saveAuth(data);
+      return data;
+    };
+
+    const authedFetch = async (url, options = {}, retry = true) => {
+      const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 && retry) {
+        await refreshAuth();
+        return authedFetch(url, options, false);
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    };
+
+    const statusPillClass = (item) => {
+      if (item.status === "completed" || item.passed) return "ok";
+      if (item.status === "attempted" || item.attempts) return "warn";
+      return "muted";
+    };
+
+    const renderQuestionCard = (item, highlight = false) => `
+      <article class="question-card ${highlight ? "highlight" : ""}">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${escapeHTML(item.title)}</div>
+            <div class="sidebar-meta">${escapeHTML(item.topic_name)} · 预计 ${item.estimated_minutes} 分钟</div>
+          </div>
+          <span class="pill ${statusPillClass(item)}">${escapeHTML(item.status_label || item.difficulty)}</span>
+        </div>
+        <div class="sidebar-meta">${escapeHTML(item.content)}</div>
+        <div class="card-meta">
+          <span>难度：${escapeHTML(item.difficulty)}</span>
+          <span>提交：${escapeHTML(item.attempts || 0)} 次</span>
+          <span>最好得分：${escapeHTML(item.best_score || 0)}</span>
+          <span>累计用时：${escapeHTML(item.duration_minutes || 0)} 分钟</span>
+        </div>
+        ${item.recommend_reason ? `<div class="sidebar-meta"><strong>推荐原因：</strong>${escapeHTML(item.recommend_reason)}</div>` : ""}
+        <div class="tag-list">${(item.tags || []).map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join("")}</div>
+        <details>
+          <summary class="sidebar-meta" style="cursor: pointer;">查看提示和参考答案</summary>
+          <div class="sidebar-meta" style="margin-top: 8px;">${(item.hints || []).map(hint => `- ${escapeHTML(hint)}`).join("<br>")}</div>
+          <div class="code" style="margin-top: 8px;">${escapeHTML(item.answer)}</div>
+        </details>
+        <button class="btn btn-primary" type="button" onclick="window.location.href='/questions/${escapeHTML(item.id)}'" style="margin-top: 6px;">进入做题</button>
+      </article>
+    `;
+
+    const renderChapterNav = (groups) => {
+      chapterNav.innerHTML = (groups || []).map(group => `
+        <button type="button" class="chapter-btn ${group.id === activeGroupId ? "active" : ""}" data-group-id="${escapeHTML(group.id)}">
+          <div class="chapter-btn-title">${escapeHTML(group.title)}</div>
+          <div class="chapter-btn-meta">${group.completed}/${group.total} 题 · ${escapeHTML(group.sections ? group.sections.length : 0)} 个知识点</div>
+        </button>
+      `).join("") || '<div class="sidebar-meta">暂无章节。</div>';
+
+      chapterNav.querySelectorAll("button[data-group-id]").forEach(button => {
+        button.addEventListener("click", () => {
+          activeGroupId = button.dataset.groupId;
+          renderKnowledgeGroups(currentQuestionGroups);
+        });
+      });
+    };
+
+    const renderKnowledgeGroups = (groups) => {
+      currentQuestionGroups = groups || [];
+      if (!activeGroupId && currentQuestionGroups.length) {
+        activeGroupId = currentQuestionGroups.find(group => group.total > 0)?.id || currentQuestionGroups[0].id;
+      }
+      renderChapterNav(currentQuestionGroups);
+      const activeGroup = currentQuestionGroups.find(group => group.id === activeGroupId) || currentQuestionGroups[0];
+      if (!activeGroup) {
+        knowledgeGroupList.innerHTML = '<div class="sidebar-meta">暂无题目分组。</div>';
+        return;
+      }
+
+      knowledgeGroupList.innerHTML = `
+        <div class="knowledge-group">
+          <div class="group-header">
+            <div class="group-title-row">
+              <div class="group-title">${escapeHTML(activeGroup.title)}</div>
+              <span class="pill">${activeGroup.completed}/${activeGroup.total}</span>
+            </div>
+            <div class="sidebar-meta">${escapeHTML(activeGroup.description)}</div>
+            <div class="bar"><span style="--width: ${Math.max(0, Math.min(100, activeGroup.completion_rate || 0))}%"></span></div>
+            <div class="card-meta">
+              <span>完成率 ${escapeHTML(activeGroup.completion_rate || 0)}%</span>
+              <span>已尝试 ${escapeHTML(activeGroup.attempted || 0)} 题</span>
+              <span>累计用时 ${escapeHTML(activeGroup.duration_minutes || 0)} 分钟</span>
+              <span>知识点 ${escapeHTML(activeGroup.sections ? activeGroup.sections.length : 0)} 个</span>
+            </div>
+            <div class="group-actions">
+              <button class="btn btn-primary" id="prevChapterBtn" type="button" style="padding: 8px 12px; font-size: 13px;">上一章</button>
+              <button class="btn btn-primary" id="nextChapterBtn" type="button" style="padding: 8px 12px; font-size: 13px;">下一章</button>
+            </div>
+          </div>
+          ${(activeGroup.sections || []).map(section => `
+            <details class="section-block ${section.total ? "" : "empty"}" ${section.total ? "open" : ""}>
+              <summary class="section-header">
+                <div>
+                  <div class="section-title">${escapeHTML(section.title)}</div>
+                  <div class="sidebar-meta">${escapeHTML(section.summary)}</div>
+                </div>
+                <span class="pill ${section.total ? "" : "muted"}">${section.total ? `${section.completed}/${section.total}` : "待补题"}</span>
+              </summary>
+              ${section.total ? `
+                <div class="section-body">
+                  <div class="bar"><span style="--width: ${Math.max(0, Math.min(100, section.completion_rate || 0))}%"></span></div>
+                  <div class="card-meta">
+                    <span>已尝试 ${escapeHTML(section.attempted || 0)} 题</span>
+                    <span>累计用时 ${escapeHTML(section.duration_minutes || 0)} 分钟</span>
+                  </div>
+                  <div class="question-grid">
+                    ${(section.questions || []).map(item => renderQuestionCard(item)).join("")}
+                  </div>
+                </div>
+              ` : '<div class="sidebar-meta">这个学习中心知识点暂时还没有挂接题目，后续补题时会直接出现在这里。</div>'}
+            </details>
+          `).join("")}
+        </div>
+      `;
+
+      const activeIndex = currentQuestionGroups.findIndex(group => group.id === activeGroup.id);
+      document.getElementById("prevChapterBtn").addEventListener("click", () => {
+        const nextIndex = Math.max(0, activeIndex - 1);
+        activeGroupId = currentQuestionGroups[nextIndex].id;
+        renderKnowledgeGroups(currentQuestionGroups);
+      });
+      document.getElementById("nextChapterBtn").addEventListener("click", () => {
+        const nextIndex = Math.min(currentQuestionGroups.length - 1, activeIndex + 1);
+        activeGroupId = currentQuestionGroups[nextIndex].id;
+        renderKnowledgeGroups(currentQuestionGroups);
+      });
+    };
+
+    const populateTopics = (topics) => {
+      // 更新原生 select（用于表单提交）
+      const options = topics.map(item => `<option value="${escapeHTML(item.value)}">${escapeHTML(item.label)}</option>`).join("");
+      topicFilter.innerHTML = `<option value="all">全部主题</option>${options}`;
+      quizTopic.innerHTML = `<option value="auto">自动匹配当前进度</option>${options}`;
+
+      // 更新自定义下拉框
+      updateTopicOptions(topics);
+    };
+
+    const loadOverview = async () => {
+      const me = await authedFetch("/auth/me");
+      userAvatar.textContent = me.username.charAt(0).toUpperCase();
+      userMeta.textContent = `当前用户：${me.username}`;
+      const overview = await authedFetch("/question-bank/overview");
+      totalQuestions.textContent = overview.stats.total_questions;
+      completedQuestions.textContent = overview.stats.completed_questions || 0;
+      recommendedDifficulty.textContent = overview.stats.recommended_difficulty;
+      levelName.textContent = overview.level.name;
+      populateTopics(overview.facets.topics || []);
+      recommendedList.innerHTML = (overview.recommended_questions || [])
+        .map(item => renderQuestionCard(item, true))
+        .join("") || '<div class="sidebar-meta">暂无推荐题。</div>';
+    };
+
+    const loadQuestions = async () => {
+      const params = new URLSearchParams({
+        topic: topicFilter.value,
+        difficulty: difficultyFilter.value,
+        question_type: typeFilter.value,
+        keyword: keywordInput.value.trim()
+      });
+      const data = await authedFetch(`/question-bank/questions?${params.toString()}`);
+      activeGroupId = "";
+      renderKnowledgeGroups(data.knowledge_groups || []);
+    };
+
+    const generateQuiz = async () => {
+      generateQuizBtn.disabled = true;
+      generateQuizBtn.textContent = "生成中...";
+      try {
+        const data = await authedFetch("/question-bank/quiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: quizTopic.value,
+            difficulty: quizDifficulty.value,
+            count: Number(quizCount.value),
+            requirement: quizRequirement.value
+          })
+        });
+        const quiz = data.quiz;
+        quizTitle.textContent = quiz.title;
+        quizMeta.textContent = `${quiz.reason} 预计 ${quiz.estimated_minutes} 分钟。`;
+        quizList.innerHTML = (quiz.questions || [])
+          .map((item, index) => `<div><div class="sidebar-meta" style="margin-bottom: 8px;">第 ${index + 1} 题</div>${renderQuestionCard(item, true)}</div>`)
+          .join("") || '<div class="sidebar-meta">暂时没有生成题目。</div>';
+      } catch (error) {
+        quizMeta.textContent = `生成失败：${error.message}`;
+      } finally {
+        generateQuizBtn.disabled = false;
+        generateQuizBtn.textContent = "生成个性化小测";
+      }
+    };
+
+    // ========== 自定义下拉框功能 ==========
+    const initCustomSelect = (selectId) => {
+      console.log('Initializing custom select:', selectId);
+      const customSelect = document.getElementById(selectId);
+      if (!customSelect) {
+        console.error('Custom select not found:', selectId);
+        return;
+      }
+
+      const trigger = customSelect.querySelector('.custom-select-trigger');
+      const options = customSelect.querySelectorAll('.custom-option');
+      const textSpan = customSelect.querySelector('.custom-select-text');
+      const hiddenSelect = customSelect.querySelector('select');
+
+      console.log('Trigger element:', trigger);
+      console.log('Options count:', options.length);
+
+      if (!trigger) {
+        console.error('Trigger not found for:', selectId);
+        return;
+      }
+
+      trigger.addEventListener('click', (e) => {
+        console.log('Trigger clicked:', selectId);
+        e.stopPropagation();
+        e.preventDefault();
+        document.querySelectorAll('.custom-select.open').forEach(el => {
+          if (el !== customSelect) el.classList.remove('open');
+        });
+        customSelect.classList.toggle('open');
+        console.log('Open state:', customSelect.classList.contains('open'));
+      });
+
+      options.forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const value = option.dataset.value;
+          const text = option.textContent;
+
+          textSpan.textContent = text;
+          hiddenSelect.value = value;
+
+          options.forEach(opt => opt.classList.remove('selected'));
+          option.classList.add('selected');
+
+          customSelect.classList.remove('open');
+          hiddenSelect.dispatchEvent(new Event('change'));
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!customSelect.contains(e.target)) {
+          customSelect.classList.remove('open');
+        }
+      });
+
+      console.log('Custom select initialized:', selectId);
+    };
+
+    // 动态更新主题下拉框选项
+    const updateTopicOptions = (topics) => {
+      const topicOptionsContainer = document.getElementById('topicFilterOptions');
+      const quizTopicOptionsContainer = document.getElementById('quizTopicOptions');
+
+      let optionsHTML = '<div class="custom-option selected" data-value="all">全部主题</div>';
+      topics.forEach(topic => {
+        optionsHTML += `<div class="custom-option" data-value="${escapeHTML(topic.value)}">${escapeHTML(topic.label)}</div>`;
+      });
+
+      if (topicOptionsContainer) topicOptionsContainer.innerHTML = optionsHTML;
+      if (quizTopicOptionsContainer) quizTopicOptionsContainer.innerHTML = '<div class="custom-option selected" data-value="auto">自动匹配当前进度</div>' + optionsHTML.replace(/全部主题/g, '全部主题（可选）');
+
+      // 重新初始化事件监听
+      initCustomSelect('topicFilterSelect');
+      initCustomSelect('quizTopicSelect');
+    };
+
+    // 初始化所有自定义下拉框
+    initCustomSelect('topicFilterSelect');
+    initCustomSelect('difficultyFilterSelect');
+    initCustomSelect('typeFilterSelect');
+    initCustomSelect('quizTopicSelect');
+    initCustomSelect('quizDifficultySelect');
+    initCustomSelect('quizCountSelect');
+
+    searchBtn.addEventListener("click", loadQuestions);
+    generateQuizBtn.addEventListener("click", generateQuiz);
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await authedFetch("/auth/logout", { method: "POST" });
+      } catch (_) {
+      } finally {
+        clearAuth();
+        window.location.href = "/";
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        await loadOverview();
+        await loadQuestions();
+      } catch (_) {
+        clearAuth();
+        window.location.href = "/";
+      }
+    };
+
+    bootstrap();
+  </script>
+</body>
+</html>
