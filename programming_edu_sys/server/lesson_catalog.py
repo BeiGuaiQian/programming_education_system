@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from programming_education_system.models.question_schema import normalize_lesson
+
 
 LESSONS: List[Dict[str, Any]] = [
     # ========== 第一章：安装环境与学习准备 ==========
@@ -3668,5 +3670,5 @@ def get_lesson(lesson_id: str) -> Optional[Dict[str, Any]]:
     """Return full lesson details by id."""
     for lesson in LESSONS:
         if lesson["id"] == lesson_id:
-            return lesson
+            return normalize_lesson(lesson)
     return None

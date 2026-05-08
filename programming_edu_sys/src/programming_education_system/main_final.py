@@ -76,6 +76,10 @@ class ProgrammingEducationSystem:
             return
         context = self._get_user_context(user_id)
         context["external_learning_context"] = external_context
+        if isinstance(external_context.get("recent_history"), list):
+            context["recent_history"] = external_context["recent_history"][-40:]
+        if external_context.get("conversation_id"):
+            context["conversation_id"] = str(external_context["conversation_id"])
         profile = external_context.get("profile", {})
         learning_goal = profile.get("learning_goal")
         if learning_goal:

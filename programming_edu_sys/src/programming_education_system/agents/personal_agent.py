@@ -7,7 +7,13 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from programming_education_system.agents.base_agent import BaseAgent
+from programming_education_system.agents.profile_guidance import (
+    build_profile_instruction,
+    build_profile_summary,
+    infer_user_type,
+)
 from programming_education_system.models.user_profile import UserProfile
+from programming_education_system.utils.agent_interaction_logger import log_agent_interaction
 from programming_education_system.utils.context_manager import context_manager
 from programming_education_system.utils.llm_utils import llm_client
 
@@ -22,6 +28,7 @@ class UserBehaviorTrackingAgent:
         payload = {**behavior_data, "timestamp": behavior_data.get("timestamp") or datetime.now().isoformat()}
         self.behavior_logs.setdefault(user_id, []).append(payload)
         self.behavior_logs[user_id] = self.behavior_logs[user_id][-100:]
+        external_context = payload.get("external_learning_context") or {}
         try:
             context_manager.save_learning_progress(
                 user_id,
@@ -31,6 +38,12 @@ class UserBehaviorTrackingAgent:
                     "last_difficulty": payload.get("difficulty"),
                     "last_score": payload.get("evaluation_score"),
                     "recent_error_patterns": payload.get("error_patterns", []),
+                    "lesson_progress": payload.get("lesson_progress")
+                    or external_context.get("progress"),
+                    "question_progress": payload.get("question_progress")
+                    or external_context.get("question_progress"),
+                    "real_learning_signals": payload.get("real_learning_signals")
+                    or external_context.get("learning_signals"),
                 },
             )
         except Exception:
@@ -65,6 +78,14 @@ class UserCognitionUpdateAgent:
                     mastery.error_patterns.append(str(pattern))
             if topic not in profile.preferred_topics:
                 profile.preferred_topics.append(topic)
+
+        learning_signals = (
+            profile_data.get("real_learning_signals")
+            or profile_data.get("learning_signals")
+            or (profile_data.get("learning_behavior") or {}).get("learning_signals")
+        )
+        if isinstance(learning_signals, dict) and learning_signals:
+            self._apply_real_learning_signals(profile, learning_signals)
 
         profile.updated_at = datetime.now()
         await self._persist_profile(profile)
@@ -118,6 +139,7 @@ class UserCognitionUpdateAgent:
             "error_patterns": {topic: mastery.error_patterns for topic, mastery in profile.knowledge_mastery.items()},
             "weak_topics": profile.get_weak_topics(),
             "learning_goals": profile.learning_goals,
+            "study_time_patterns": profile.study_time_patterns,
             "updated_at": profile.updated_at.isoformat(),
         }
 
@@ -134,7 +156,110 @@ class UserCognitionUpdateAgent:
             profile.update_mastery(topic, bool(float(level) >= 0.5), "beginner")
             profile.knowledge_mastery[topic].mastery_level = float(level)
             profile.knowledge_mastery[topic].error_patterns = list(error_patterns.get(topic, []))
+        profile.study_time_patterns = dict(data.get("study_time_patterns", {}))
         return profile
+
+    def _apply_real_learning_signals(self, profile: UserProfile, signals: Dict[str, Any]) -> None:
+        profile.study_time_patterns["behavior_metrics"] = self._compact_learning_signals(signals)
+        topic_metrics = signals.get("topic_metrics") or {}
+        for topic, metric in topic_metrics.items():
+            topic_name = str(topic or "general")
+            if topic_name == "general" and not metric.get("submissions"):
+                continue
+
+            submissions = self._safe_int(metric.get("submissions"))
+            pass_rate = self._safe_float(metric.get("pass_rate"))
+            first_pass_rate = self._safe_float(metric.get("first_pass_rate"))
+            consecutive_failures = self._safe_int(metric.get("consecutive_failures"))
+            answer_views = self._safe_int(metric.get("answer_views"))
+            hint_views = self._safe_int(metric.get("hint_views"))
+            average_dwell = self._safe_float(metric.get("average_dwell_seconds"))
+
+            if submissions > 0:
+                estimated = 0.25 + pass_rate * 0.45 + first_pass_rate * 0.2
+            else:
+                estimated = 0.5
+            estimated -= min(consecutive_failures, 5) * 0.06
+            estimated -= min(answer_views + hint_views, 6) * 0.015
+            if average_dwell >= 600:
+                estimated -= 0.08
+            elif average_dwell >= 300:
+                estimated -= 0.04
+            estimated = self._clamp(estimated, 0.1, 0.95)
+
+            if topic_name not in profile.knowledge_mastery:
+                profile.update_mastery(topic_name, estimated >= 0.55, "beginner")
+            mastery = profile.knowledge_mastery[topic_name]
+            mastery.mastery_level = self._clamp(mastery.mastery_level * 0.65 + estimated * 0.35, 0.1, 1.0)
+            mastery.last_practiced = datetime.now()
+
+            patterns = mastery.error_patterns
+            if consecutive_failures >= 2:
+                self._add_pattern(patterns, f"连续失败 {consecutive_failures} 次")
+            if answer_views >= 2 or signals.get("frequent_answer_view"):
+                self._add_pattern(patterns, "频繁查看参考答案")
+            if hint_views >= 3 or signals.get("frequent_hint_view"):
+                self._add_pattern(patterns, "频繁查看提示")
+            if average_dwell >= 300:
+                self._add_pattern(patterns, "题目停留时间较长")
+
+            if submissions > 0 and topic_name not in profile.preferred_topics:
+                profile.preferred_topics.append(topic_name)
+
+    def _compact_learning_signals(self, signals: Dict[str, Any]) -> Dict[str, Any]:
+        topic_metrics = {}
+        for topic, metric in (signals.get("topic_metrics") or {}).items():
+            topic_metrics[str(topic)] = {
+                "submissions": self._safe_int(metric.get("submissions")),
+                "pass_rate": self._safe_float(metric.get("pass_rate")),
+                "first_pass_rate": self._safe_float(metric.get("first_pass_rate")),
+                "consecutive_failures": self._safe_int(metric.get("consecutive_failures")),
+                "answer_views": self._safe_int(metric.get("answer_views")),
+                "hint_views": self._safe_int(metric.get("hint_views")),
+                "average_dwell_seconds": self._safe_float(metric.get("average_dwell_seconds")),
+            }
+        return {
+            "total_submission_count": self._safe_int(signals.get("total_submission_count")),
+            "question_submission_count": self._safe_int(signals.get("question_submission_count")),
+            "lesson_submission_count": self._safe_int(signals.get("lesson_submission_count")),
+            "first_pass_rate": self._safe_float(signals.get("first_pass_rate")),
+            "question_first_pass_rate": self._safe_float(signals.get("question_first_pass_rate")),
+            "lesson_first_pass_rate": self._safe_float(signals.get("lesson_first_pass_rate")),
+            "average_attempts_per_question": self._safe_float(signals.get("average_attempts_per_question")),
+            "average_attempts_per_lesson": self._safe_float(signals.get("average_attempts_per_lesson")),
+            "answer_view_count": self._safe_int(signals.get("answer_view_count")),
+            "hint_view_count": self._safe_int(signals.get("hint_view_count")),
+            "answer_view_rate": self._safe_float(signals.get("answer_view_rate")),
+            "hint_view_rate": self._safe_float(signals.get("hint_view_rate")),
+            "frequent_answer_view": bool(signals.get("frequent_answer_view")),
+            "frequent_hint_view": bool(signals.get("frequent_hint_view")),
+            "consecutive_failures_by_topic": dict(signals.get("consecutive_failures_by_topic") or {}),
+            "long_dwell_targets": list(signals.get("long_dwell_targets") or [])[:5],
+            "topic_metrics": topic_metrics,
+        }
+
+    @staticmethod
+    def _add_pattern(patterns: List[str], pattern: str) -> None:
+        if pattern not in patterns:
+            patterns.append(pattern)
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _clamp(value: float, lower: float, upper: float) -> float:
+        return max(lower, min(upper, value))
 
     def _infer_correctness(self, profile_data: Dict[str, Any]) -> bool:
         if "correct" in profile_data:
@@ -188,6 +313,24 @@ class PersonalizedSuggestionAgent:
             top_error = Counter(common_errors).most_common(1)[0][0]
             suggestions.append(f"最近常见问题是 {top_error}，建议先做一次针对性订正。")
 
+        behavior_metrics = (user_profile.get("study_time_patterns") or {}).get("behavior_metrics") or {}
+        if behavior_metrics:
+            total_submissions = int(behavior_metrics.get("total_submission_count") or 0)
+            first_pass_rate = float(behavior_metrics.get("first_pass_rate") or 0.0)
+            if total_submissions >= 3 and first_pass_rate < 0.5:
+                suggestions.append("首次通过率偏低，做题前先写清输入输出样例。")
+            if behavior_metrics.get("frequent_answer_view"):
+                suggestions.append("查看答案偏多，建议先写思路和伪代码再对照答案。")
+            if behavior_metrics.get("frequent_hint_view"):
+                suggestions.append("提示依赖偏高，建议每题先独立尝试 10 分钟。")
+            failure_topics = behavior_metrics.get("consecutive_failures_by_topic") or {}
+            if failure_topics:
+                topic, count = max(failure_topics.items(), key=lambda item: int(item[1] or 0))
+                suggestions.append(f"{topic} 连续失败 {count} 次，先回到对应基础题巩固。")
+            long_dwell_targets = behavior_metrics.get("long_dwell_targets") or []
+            if long_dwell_targets:
+                suggestions.append("部分题目停留较久，建议向助教请求分步骤提示。")
+
         learning_style = user_profile.get("learning_style", "visual")
         if learning_style == "visual":
             suggestions.append("讲新概念时建议配合流程图、表格或输入输出示例。")
@@ -201,13 +344,18 @@ class PersonalizedSuggestionAgent:
             "任务：基于用户画像补充 2 条具体、可执行的学习建议。\n"
             "约束：不要泛泛而谈；每条建议必须包含一个具体行动；不要重复已有建议。\n"
             "输出：只输出两条短建议，每条不超过 35 个字。\n"
-            f"用户画像:\n{user_profile}\n"
+            f"{build_profile_instruction(user_profile, 'personal')}\n"
+            f"用户画像摘要:\n{build_profile_summary(user_profile)}\n"
             f"已有建议:\n{suggestions}"
         )
         llm_response = await llm_client.generate_response(
-            system_prompt="你是编程教育中的个性化学习教练，回答必须具体、可执行。",
+            system_prompt=(
+                "你是编程教育中的个性化学习教练，回答必须具体、可执行。"
+                "必须先读取用户画像摘要，再按当前用户类型调整建议力度、粒度和下一步任务。"
+            ),
             user_message=prompt,
             use_cache=False,
+            task_type="personal",
         )
         if llm_response and "目前无法调用大模型" not in llm_response:
             suggestions.append(f"AI建议：{llm_response.strip()}")
@@ -285,20 +433,42 @@ class PersonalizedLearningAgent(BaseAgent):
         user_id = request["user_id"]
         content = str(request.get("content", ""))
         lowered = content.lower()
+        user_profile = await self.get_user_profile(user_id)
         self.log_activity("processing personalized request", {"user_id": user_id})
+        log_agent_interaction(
+            "sub_agent_received",
+            "MainAgent",
+            self.name,
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload={
+                "content": content,
+                "intent_analysis": request.get("intent_analysis", {}),
+                "task_context": request.get("context", {}).get("task_context"),
+                "user_type": infer_user_type(user_profile),
+            },
+        )
 
         if any(keyword in lowered for keyword in ["path", "路线", "路径", "计划"]):
-            learning_path = await self.generate_learning_path(user_id)
+            learning_path = await self.path_agent.generate_learning_path(user_profile)
             path_text = "\n".join(f"{index + 1}. {item}" for index, item in enumerate(learning_path["path"]))
-            return {
+            response_data = {
                 "success": True,
                 "response": f"个性化学习路径\n当前水平：{learning_path['level']}\n预计投入：{learning_path['estimated_duration']}\n{path_text}",
                 "details": {"learning_path": learning_path, "topic": "personal_learning"},
             }
+            log_agent_interaction(
+                "sub_agent_completed",
+                self.name,
+                "MainAgent",
+                request_id=str(request.get("request_id", "")),
+                user_id=user_id,
+                payload=response_data,
+            )
+            return response_data
 
         if any(keyword in lowered for keyword in ["profile", "画像"]):
-            user_profile = await self.get_user_profile(user_id)
-            return {
+            response_data = {
                 "success": True,
                 "response": (
                     f"学习画像\n学习风格：{user_profile['learning_style']}\n"
@@ -307,11 +477,29 @@ class PersonalizedLearningAgent(BaseAgent):
                 ),
                 "details": {"user_profile": user_profile, "topic": "personal_learning"},
             }
+            log_agent_interaction(
+                "sub_agent_completed",
+                self.name,
+                "MainAgent",
+                request_id=str(request.get("request_id", "")),
+                user_id=user_id,
+                payload=response_data,
+            )
+            return response_data
 
-        suggestions = await self.generate_personalized_suggestion(user_id)
+        suggestions = await self.suggestion_agent.generate_personalized_suggestion(user_profile)
         suggestion_text = "\n".join(f"- {item}" for item in suggestions)
-        return {
+        response_data = {
             "success": True,
             "response": f"个性化学习建议\n{suggestion_text}",
             "details": {"suggestions": suggestions, "topic": "personal_learning"},
         }
+        log_agent_interaction(
+            "sub_agent_completed",
+            self.name,
+            "MainAgent",
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload=response_data,
+        )
+        return response_data

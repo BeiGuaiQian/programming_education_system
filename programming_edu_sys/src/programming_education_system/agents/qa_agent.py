@@ -33,24 +33,40 @@ class ThinkingQAAgent:
         system_prompt = self._build_system_prompt(cognitive_state, learning_params, teaching_mode)
         retrieval_context = (context or {}).get("retrieval_context", {})
         retrieval_text = (context or {}).get("retrieval_text", "")
-        history_text = self._format_recent_history((context or {}).get("recent_history", []))
+        task_context = (context or {}).get("task_context") or {}
+        user_requirement = str(task_context.get("user_requirement") or "").strip()
+        context_summary = str(task_context.get("context_summary") or "").strip()
+        already_answered = self._format_list(task_context.get("already_answered") or [])
+        avoid_repeating = self._format_list(task_context.get("avoid_repeating") or [])
         user_message = (
             f"学生问题: {complex_question}\n\n"
-            f"最近对话:\n{history_text or '无'}\n\n"
+            f"用户本轮要求:\n{user_requirement or '无'}\n\n"
+            f"用户代理提供的必要上下文:\n{context_summary or '无'}\n\n"
+            f"历史中已经讲过的要点:\n{already_answered or '无'}\n\n"
+            f"本轮应避免重复:\n{avoid_repeating or '无'}\n\n"
             f"检索到的课程资料:\n{retrieval_text or '未检索到课程资料。'}\n\n"
             "回答要求:\n"
             "1. 先判断课程资料是否与学生问题直接相关；不相关时不要硬套资料。\n"
             "2. 相关资料只能作为证据和例子，最终回答必须紧扣学生问题。\n"
             "3. 资料不足时明确说明“课程资料没有直接覆盖”，再用通用编程知识补充。\n"
             "4. 面向编程学习者，用短例子或小练习帮助理解。\n"
-            "5. 如果学生是在追问上一轮，只补充当前追问需要的新信息，不要完整重复上一轮答案。\n"
+            "5. 如果用户代理提供了已经讲过的要点，本轮只补充当前请求需要的新信息，不要完整重复旧答案。\n"
             "6. 不要编造不存在的来源，不要回答与问题无关的内容。"
         )
-        if context:
-            user_message += f"\n\n其他上下文: {self._compact_context(context)}"
-        answer = await llm_client.generate_response(system_prompt, user_message, use_cache=False)
+        answer = await llm_client.generate_response_with_retry(
+            system_prompt,
+            user_message,
+            use_cache=False,
+            max_retries=1,
+            task_type="qa",
+        )
+        answer_source = "llm_thinking"
+        if self._is_llm_unavailable_answer(answer):
+            answer = self._build_retrieval_fallback_answer(complex_question, retrieval_context)
+            answer_source = "qa_retrieval_fallback"
         return {
             "answer": answer,
+            "answer_source": answer_source,
             "cognitive_level_used": cognitive_state["overall_cognitive_level"],
             "learning_parameters": learning_params,
             "personalization_applied": True,
@@ -93,12 +109,10 @@ class ThinkingQAAgent:
         )
 
     @staticmethod
-    def _compact_context(context: Dict[str, Any]) -> Dict[str, Any]:
-        compact = dict(context)
-        compact.pop("retrieval_context", None)
-        compact.pop("retrieval_text", None)
-        compact.pop("recent_history", None)
-        return compact
+    def _format_list(items: List[Any], limit: int = 6) -> str:
+        if not isinstance(items, list):
+            return ""
+        return "\n".join(f"- {str(item)[:160]}" for item in items[:limit] if str(item).strip())
 
     @staticmethod
     def _format_recent_history(history: List[Dict[str, Any]], limit: int = 3) -> str:
@@ -112,6 +126,31 @@ class ThinkingQAAgent:
             if agent_response:
                 lines.append(f"   助手: {agent_response[:240]}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _is_llm_unavailable_answer(answer: str) -> bool:
+        return "目前无法调用大模型" in str(answer or "")
+
+    @staticmethod
+    def _build_retrieval_fallback_answer(question: str, retrieval_context: Dict[str, Any]) -> str:
+        hits = retrieval_context.get("hits") or []
+        if hits:
+            first = hits[0]
+            title = str(first.get("title") or "相关资料")
+            text = " ".join(str(first.get("text") or "").split())
+            if len(text) > 420:
+                text = text[:419].rstrip() + "…"
+            return (
+                "大模型暂时不可用，我先根据课程资料给你一个简要说明。\n\n"
+                f"当前问题：{question}\n\n"
+                f"可参考资料：{title}\n\n"
+                f"核心内容：{text}\n\n"
+                "如果需要更细的步骤，可以稍后再让我继续展开。"
+            )
+        return (
+            "大模型暂时不可用，而且当前问题没有匹配到足够明确的课程资料。\n"
+            "建议稍后重试，或把想问的概念、代码片段再具体写一下。"
+        )
 
 
 class KnowledgeBaseRetrievalAgent:
@@ -143,8 +182,13 @@ class KnowledgeBaseRetrievalAgent:
             for item in items:
                 self.knowledge_base.add_knowledge(topic, item["question"], item["answer"], item["examples"])
 
-    async def retrieve_from_knowledge_base(self, question: str, user_id: str) -> Dict[str, Any]:
-        topic = self._infer_topic_from_question(question)
+    async def retrieve_from_knowledge_base(
+        self,
+        question: str,
+        user_id: str,
+        topic: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        topic = topic or self._infer_topic_from_question(question)
         results = self.knowledge_base.search(question, topic=None if topic == "general_programming" else topic)
         if not results:
             return {"found": False, "answer": ""}
@@ -261,9 +305,24 @@ class QAAgent(BaseAgent):
     ) -> Dict[str, Any]:
         self.log_activity("answering question", {"user_id": user_id})
         context = context or {}
-        is_follow_up = self._is_follow_up_question(question, context)
-        kb_result = await self.kb_agent.retrieve_from_knowledge_base(question, user_id)
-        if not is_follow_up and kb_result.get("found") and kb_result.get("confidence") == "high":
+        intent_analysis = context.get("intent_analysis") or {}
+        task_context = context.get("task_context") or {}
+        topic = str(
+            intent_analysis.get("topic")
+            or task_context.get("topic_hint")
+            or "general_programming"
+        )
+        allow_direct_kb = not any(
+            [
+                task_context.get("context_summary"),
+                task_context.get("already_answered"),
+                task_context.get("avoid_repeating"),
+                task_context.get("user_requirement"),
+                task_context.get("action") not in {None, "", "plain"},
+            ]
+        )
+        kb_result = await self.kb_agent.retrieve_from_knowledge_base(question, user_id, topic=topic)
+        if allow_direct_kb and kb_result.get("found") and kb_result.get("confidence") == "high":
             return {
                 "response": kb_result["answer"],
                 "examples": kb_result.get("examples", []),
@@ -274,9 +333,6 @@ class QAAgent(BaseAgent):
                 "citations": kb_result.get("citations", []),
             }
 
-        topic = self._extract_topic(question)
-        if topic == "general_programming":
-            topic = self._topic_from_context(context) or topic
         retrieval_context = self.kb_agent.knowledge_base.build_context(question, topic=topic, limit=3)
         if not retrieval_context.get("hits") and topic != "general_programming":
             retrieval_context = self.kb_agent.knowledge_base.build_context(question, topic=None, limit=3)
@@ -304,7 +360,7 @@ class QAAgent(BaseAgent):
         return {
             "response": thinking_result["answer"],
             "examples": [],
-            "source": "llm_thinking",
+            "source": thinking_result.get("answer_source", "llm_thinking"),
             "needs_thinking": True,
             "cognitive_level_used": thinking_result["cognitive_level_used"],
             "personalized": thinking_result["personalization_applied"],
@@ -366,7 +422,12 @@ class QAAgent(BaseAgent):
         user_id = request["user_id"]
         context = {**request.get("context", {}), "intent_analysis": request.get("intent_analysis", {})}
         result = await self.answer_question(question, user_id, context)
-        topic = self._extract_topic(question)
+        task_context = context.get("task_context") or {}
+        topic = str(
+            context.get("intent_analysis", {}).get("topic")
+            or task_context.get("topic_hint")
+            or "general_programming"
+        )
 
         await self.personal_agent.track_user_behavior(
             {

@@ -41,6 +41,7 @@ if str(SRC_ROOT) not in sys.path:
 load_dotenv(PROJECT_ROOT / ".env")
 
 from programming_education_system.main_final import get_system
+from programming_education_system.models.question_schema import question_as_lesson
 from server.ide.analyzer import analyze_code, build_submit_feedback, detect_stuck
 from server.lesson_catalog import get_lesson, list_curriculum, list_lessons
 from server.lesson_grader import analyze_lesson_code, format_structured_feedback, grade_lesson_submission, run_hidden_tests
@@ -514,11 +515,24 @@ def _personalize_questions(
         for item in (behavior or {}).get("stuck_targets", [])
         if item.get("target_type") == "question" and item.get("target_id")
     }
+    learning_signals = (behavior or {}).get("learning_signals", {})
+    failure_topics = learning_signals.get("consecutive_failures_by_topic") or {}
+    topic_metrics = learning_signals.get("topic_metrics") or {}
 
     def score(item: Dict[str, Any]) -> tuple:
         difficulty_score = 0 if item["difficulty"] == recommended_difficulty else 1
         stuck_score = -1 if item["id"] in stuck_question_ids else 0
+        failure_topic_score = -2 if item["topic"] in failure_topics else 0
+        topic_metric = topic_metrics.get(item["topic"], {})
+        weak_topic_score = (
+            -1
+            if int(topic_metric.get("submissions", 0) or 0) > 0
+            and float(topic_metric.get("pass_rate", 1.0) or 1.0) < 0.6
+            else 0
+        )
         return (
+            failure_topic_score,
+            weak_topic_score,
             stuck_score,
             difficulty_score,
             topic_rank.get(item["topic"], 99),
@@ -536,6 +550,13 @@ def _personalize_questions(
             reason_parts.append("主题贴近你当前需要巩固的知识点")
         if item["id"] in stuck_question_ids:
             reason_parts.append("你最近在这道题停留较久，适合回头解决卡点")
+        if item["topic"] in failure_topics:
+            reason_parts.append("该知识点近期连续失败，适合优先补强")
+        elif (
+            int((topic_metrics.get(item["topic"], {}) or {}).get("submissions", 0) or 0) > 0
+            and float((topic_metrics.get(item["topic"], {}) or {}).get("pass_rate", 1.0) or 1.0) < 0.6
+        ):
+            reason_parts.append("该主题通过率偏低，适合作为针对性练习")
         if not reason_parts:
             reason_parts.append("适合作为拓展练习")
         enriched.append(
@@ -638,19 +659,7 @@ async def _generate_personalized_quiz(username: str, payload: QuizGenerateReques
 
 
 def _question_as_lesson(question: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "id": question["id"],
-        "title": question["title"],
-        "topic": question["topic"],
-        "difficulty": question["difficulty"],
-        "exercise": {
-            "id": question["id"],
-            "title": question["title"],
-            "description": question["content"],
-            "expected_function": question.get("expected_function", ""),
-            "hidden_tests": question.get("hidden_tests", []),
-        },
-    }
+    return question_as_lesson(question)
 
 
 def _lesson_expected_function(lesson: Dict[str, Any]) -> str:
@@ -943,6 +952,19 @@ def _build_behavior_insights(behavior: Dict[str, Any]) -> List[Dict[str, str]]:
         insights.append({"title": "学习方式", "content": _learning_style_label(preferences.get("learning_style"))})
     if preferences.get("preferred_pace"):
         insights.append({"title": "学习节奏", "content": _preferred_pace_label(preferences.get("preferred_pace"))})
+    signals = behavior.get("learning_signals") or {}
+    total_submissions = int(signals.get("total_submission_count") or 0)
+    if total_submissions:
+        first_pass_rate = round(float(signals.get("first_pass_rate") or 0.0) * 100, 1)
+        insights.append({"title": "首次通过率", "content": f"已提交 {total_submissions} 次，首次通过率约 {first_pass_rate}%。"})
+    if signals.get("frequent_answer_view"):
+        insights.append({"title": "答案查看", "content": "查看参考答案次数偏多，建议先输出思路再对照答案。"})
+    if signals.get("frequent_hint_view"):
+        insights.append({"title": "提示使用", "content": "提示使用较频繁，后续推荐会增加更小步长的练习。"})
+    failure_topics = signals.get("consecutive_failures_by_topic") or {}
+    if failure_topics:
+        topic, count = max(failure_topics.items(), key=lambda item: int(item[1] or 0))
+        insights.append({"title": "连续失败知识点", "content": f"{topic} 连续失败 {count} 次，适合优先补强。"})
     for stuck in behavior.get("stuck_targets", [])[:3]:
         target_name = stuck.get("target_id") or "某个学习点"
         minutes = round(float(stuck.get("duration_seconds", 0.0) or 0.0) / 60, 1)
@@ -1301,10 +1323,12 @@ async def _build_profile_overview(username: str) -> Dict[str, Any]:
 async def _build_agent_learning_context(username: str) -> Dict[str, Any]:
     user = await _run_store(store.get_user, username)
     progress = await _run_store(store.get_lesson_progress_summary, username)
+    question_progress = await _run_store(store.get_question_progress_summary, username)
     behavior = await _run_store(store.get_learning_behavior_summary, username)
     lessons = list_lessons(language="python")
     level = _build_learning_level(progress, len(lessons))
     preferences = behavior.get("preferences", {})
+    learning_signals = behavior.get("learning_signals", {})
     return {
         "profile": {
             "username": username,
@@ -1321,13 +1345,58 @@ async def _build_agent_learning_context(username: str) -> Dict[str, Any]:
             "completed_lessons": progress.get("completed_lessons", 0),
             "average_best_score": progress.get("average_best_score", 0.0),
         },
+        "question_progress": {
+            "total_attempts": question_progress.get("total_attempts", 0),
+            "completed_questions": question_progress.get("completed_questions", 0),
+            "average_best_score": question_progress.get("average_best_score", 0.0),
+        },
+        "learning_signals": learning_signals,
         "behavior": {
             "total_events": behavior.get("total_events", 0),
             "total_study_minutes": round(float(behavior.get("total_duration_seconds", 0.0)) / 60, 1),
             "stuck_targets": behavior.get("stuck_targets", [])[:3],
             "recent_events": behavior.get("recent_events", [])[:5],
+            "first_pass_rate": learning_signals.get("first_pass_rate", 0.0),
+            "question_first_pass_rate": learning_signals.get("question_first_pass_rate", 0.0),
+            "answer_view_count": learning_signals.get("answer_view_count", 0),
+            "hint_view_count": learning_signals.get("hint_view_count", 0),
+            "frequent_answer_view": learning_signals.get("frequent_answer_view", False),
+            "frequent_hint_view": learning_signals.get("frequent_hint_view", False),
+            "consecutive_failures_by_topic": learning_signals.get("consecutive_failures_by_topic", {}),
+            "long_dwell_targets": learning_signals.get("long_dwell_targets", [])[:3],
         },
     }
+
+
+def _messages_to_recent_history(
+    messages: List[Dict[str, Any]],
+    limit: int = 40,
+    conversation_id: str | None = None,
+) -> List[Dict[str, Any]]:
+    """Convert persisted chat messages into the agent history shape."""
+    history: List[Dict[str, Any]] = []
+    pending_user: Dict[str, Any] | None = None
+    for message in messages:
+        role = str(message.get("role", ""))
+        content = str(message.get("content", ""))
+        if role == "user":
+            pending_user = {
+                "user_input": content,
+                "request_type": message.get("request_type"),
+                "timestamp": message.get("created_at"),
+                "conversation_id": conversation_id,
+            }
+        elif role == "assistant" and pending_user:
+            history.append(
+                {
+                    **pending_user,
+                    "agent_response": content,
+                    "agent_request_type": message.get("request_type"),
+                    "agent_timestamp": message.get("created_at"),
+                }
+            )
+            pending_user = None
+    return history[-limit:]
 
 
 async def _run_store(func, *args, **kwargs):
@@ -1470,6 +1539,9 @@ async def ask_learning_selection(
     )
 
     agent_context = await _build_agent_learning_context(session.username)
+    conversation_messages = await _run_store(store.list_messages, session.username, conversation_id)
+    agent_context["conversation_id"] = conversation_id
+    agent_context["recent_history"] = _messages_to_recent_history(conversation_messages, conversation_id=conversation_id)
     await _acquire_agent_slot()
     try:
         system = get_system()

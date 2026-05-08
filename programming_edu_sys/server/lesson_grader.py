@@ -11,6 +11,7 @@ import sys
 import tempfile
 from typing import Any, Dict, List, Optional
 
+from programming_education_system.models.question_schema import normalize_lesson
 from programming_education_system.main_final import get_system
 
 
@@ -95,6 +96,7 @@ def analyze_lesson_code(
     hidden_result: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build student-facing diagnostics for a lesson submission."""
+    lesson = normalize_lesson(lesson)
     exercise = lesson["exercise"]
     required_function = exercise.get("expected_function", "")
     diagnostics: List[Dict[str, Any]] = []
@@ -284,6 +286,7 @@ def format_structured_feedback(structured: Dict[str, Any]) -> str:
 
 async def run_hidden_tests(code: str, lesson: Dict[str, Any]) -> Dict[str, Any]:
     """Execute hidden tests in a separate isolated Python process."""
+    lesson = normalize_lesson(lesson)
     hidden_tests = lesson["exercise"]["hidden_tests"]
     required_function = lesson["exercise"].get("expected_function", "")
     validation_errors = validate_lesson_code(code, required_function) if required_function else []
@@ -407,6 +410,7 @@ async def run_hidden_tests(code: str, lesson: Dict[str, Any]) -> Dict[str, Any]:
 
 async def grade_lesson_submission(code: str, lesson: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Combine hidden tests with agent evaluation feedback."""
+    lesson = normalize_lesson(lesson)
     hidden_result = await run_hidden_tests(code, lesson)
     structured_feedback = analyze_lesson_code(code, lesson, hidden_result)
     validation_errors = hidden_result.get("validation_errors", [])

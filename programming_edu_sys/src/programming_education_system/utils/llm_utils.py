@@ -48,6 +48,7 @@ class LLMClient:
                 api_key=Config.DEEPSEEK_API_KEY,
                 base_url=Config.DEEPSEEK_BASE_URL,
                 timeout=self.timeout,
+                max_retries=0,
             )
             self.openai_error_types = (APIError, APITimeoutError, RateLimitError)
             self.initialized = True
@@ -84,12 +85,14 @@ class LLMClient:
         system_prompt: str,
         user_message: str,
         use_cache: bool = True,
+        task_type: str = "general",
     ) -> str:
         return await self.generate_response_with_retry(
             system_prompt=system_prompt,
             user_message=user_message,
             use_cache=use_cache,
             max_retries=self.max_retries,
+            task_type=task_type,
         )
 
     async def generate_response_with_retry(
@@ -98,6 +101,7 @@ class LLMClient:
         user_message: str,
         use_cache: bool = True,
         max_retries: int = 3,
+        task_type: str = "general",
     ) -> str:
         cache_key = self._generate_cache_key(system_prompt, user_message) if use_cache else None
         if cache_key:
@@ -110,6 +114,7 @@ class LLMClient:
                 system_prompt,
                 user_message,
                 self.fallback_reason or "llm_unavailable",
+                task_type=task_type,
             )
             if cache_key:
                 self._set_cached_response(cache_key, response)
@@ -120,13 +125,14 @@ class LLMClient:
                 system_prompt,
                 user_message,
                 "llm_circuit_open",
+                task_type=task_type,
             )
             if cache_key:
                 self._set_cached_response(cache_key, response)
             return response
 
         last_exception: Optional[Exception] = None
-        for attempt in range(max_retries):
+        for attempt in range(max(1, max_retries)):
             try:
                 result = await self._request_completion(system_prompt, user_message)
                 self.failure_count = 0
@@ -137,7 +143,7 @@ class LLMClient:
             except self.openai_error_types as exc:
                 last_exception = exc
                 self._record_failure()
-                if attempt < max_retries - 1:
+                if attempt < max(1, max_retries) - 1:
                     await asyncio.sleep(self._calculate_backoff(attempt))
             except Exception as exc:
                 last_exception = exc
@@ -148,6 +154,7 @@ class LLMClient:
             system_prompt,
             user_message,
             str(last_exception) if last_exception else "unknown_error",
+            task_type=task_type,
         )
         if cache_key:
             self._set_cached_response(cache_key, response)
@@ -179,18 +186,37 @@ class LLMClient:
                 self.failure_count,
             )
 
-    def _get_fallback_response(self, system_prompt: str, user_message: str, error_msg: str) -> str:
-        message = user_message.lower()
+    def _get_fallback_response(
+        self,
+        system_prompt: str,
+        user_message: str,
+        error_msg: str,
+        task_type: str = "general",
+    ) -> str:
         logger.info("Using fallback LLM response due to: %s", error_msg)
 
-        if any(keyword in message for keyword in ["evaluate", "review", "feedback", "代码", "评估"]):
+        task_type = (task_type or "general").lower()
+        if task_type in {"router", "intent"}:
+            return (
+                '{"intent":"qa","topic":"general_programming","difficulty":"beginner",'
+                '"confidence":0.2,"reason":"llm_unavailable","needs_code_review":false,'
+                '"needs_exercise_context":false,"teaching_mode":"explain"}'
+            )
+        if task_type in {"user_context", "context"}:
+            return (
+                '{"action":"plain","intent":"qa","optimized_input":"","topic_hint":"general_programming",'
+                '"user_requirement":"","context_summary":"","already_answered":[],"avoid_repeating":[],'
+                '"relevant_turns":[],"use_last_question":false,"needs_exercise_context":false,'
+                '"confidence":0.2,"reason":"llm_unavailable"}'
+            )
+        if task_type == "evaluation":
             return "目前无法调用大模型，我先给出基于规则的代码分析结果。"
-        if any(keyword in message for keyword in ["exercise", "problem", "practice", "练习", "题"]):
+        if task_type == "exercise":
             return "目前无法调用大模型，我先按基础模式为你处理练习相关请求。"
-        if any(keyword in message for keyword in ["path", "suggest", "advice", "建议", "学习"]):
+        if task_type == "personal":
             return "目前无法调用大模型，我先根据现有学习记录给出基础建议。"
-        if "intent" in system_prompt.lower():
-            return '{"intent": "qa", "confidence": 0.3, "reason": "fallback"}'
+        if task_type == "qa":
+            return "目前无法调用大模型，我先根据课程资料和当前问题给出简要解释。"
         return "目前无法调用大模型，我先按系统内置逻辑继续处理。"
 
     def clear_cache(self) -> None:

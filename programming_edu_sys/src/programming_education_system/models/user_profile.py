@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -27,7 +27,7 @@ class UserProfile:
     preferred_topics: List[str] = field(default_factory=list)
     knowledge_mastery: Dict[str, KnowledgeMastery] = field(default_factory=dict)
     learning_goals: List[str] = field(default_factory=list)
-    study_time_patterns: Dict[str, int] = field(default_factory=dict)
+    study_time_patterns: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 

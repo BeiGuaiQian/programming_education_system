@@ -422,6 +422,7 @@
     let question = null;
     let latestCode = "";
     let questionEnteredAt = Date.now();
+    let hintTracked = false;
     let eduIDE = null;
 
     if (!accessToken || !refreshToken) {
@@ -503,9 +504,22 @@
       if (durationSeconds < 3) return;
       trackLearningEvent("question_dwell", "question", question.id, durationSeconds, {
         title: question.title,
+        topic: question.topic,
+        difficulty: question.difficulty,
         page: "question_detail"
       });
       questionEnteredAt = Date.now();
+    };
+
+    const trackQuestionHintView = () => {
+      if (!question || hintTracked || !(question.hints || []).length) return;
+      hintTracked = true;
+      trackLearningEvent("question_hint_view", "question", question.id, null, {
+        title: question.title,
+        topic: question.topic,
+        difficulty: question.difficulty,
+        hint_count: (question.hints || []).length
+      });
     };
 
     const updateEditorStatus = () => {
@@ -560,6 +574,7 @@
     const renderQuestion = (payload) => {
       question = payload.question;
       questionEnteredAt = Date.now();
+      hintTracked = false;
       questionTitle.textContent = question.title;
       questionMeta.textContent = `${question.topic_name} · ${question.difficulty} · ${question.type} · 预计 ${question.estimated_minutes} 分钟`;
       tagList.innerHTML = (question.tags || []).map(tag => `<span class="pill">${escapeHTML(tag)}</span>`).join("");
@@ -641,10 +656,17 @@
     });
     answerBtn.addEventListener("click", () => {
       if (!question) return;
+      trackLearningEvent("question_answer_view", "question", question.id, null, {
+        title: question.title,
+        topic: question.topic,
+        difficulty: question.difficulty
+      });
       setEditorCode(question.answer || "");
       updateEditorStatus();
       focusEditor();
     });
+    hintList.addEventListener("pointerenter", trackQuestionHintView);
+    hintList.addEventListener("click", trackQuestionHintView);
 
     logoutBtn.addEventListener("click", async () => {
       try {

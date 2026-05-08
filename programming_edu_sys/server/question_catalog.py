@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from programming_education_system.models.question_schema import normalize_question
+
 
 QUESTIONS: List[Dict[str, Any]] = [
     {
@@ -187,28 +189,29 @@ def list_questions(
     question_type: Optional[str] = None,
     keyword: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    items = QUESTIONS
+    items = [normalize_question(item, source="static_question_bank") for item in QUESTIONS]
     if topic and topic != "all":
         items = [item for item in items if item["topic"] == topic]
     if difficulty and difficulty != "all":
         items = [item for item in items if item["difficulty"] == difficulty]
     if question_type and question_type != "all":
-        items = [item for item in items if item["type"] == question_type]
+        items = [item for item in items if item["question_type"] == question_type or item["type"] == question_type]
     if keyword:
         lowered = keyword.lower()
         items = [
             item
             for item in items
             if lowered in item["title"].lower()
-            or lowered in item["content"].lower()
+            or lowered in item["description"].lower()
+            or lowered in str(item.get("content", "")).lower()
             or any(lowered in tag.lower() for tag in item["tags"])
         ]
     return items
 
 
 def get_question(question_id: str) -> Optional[Dict[str, Any]]:
-    for item in QUESTIONS:
-        if item["id"] == question_id:
+    for item in list_questions():
+        if item["id"] == question_id or item["question_id"] == question_id:
             return item
     return None
 
@@ -217,10 +220,10 @@ def get_question_facets() -> Dict[str, Any]:
     topics = {}
     difficulties = {}
     types = {}
-    for item in QUESTIONS:
+    for item in list_questions():
         topics[item["topic"]] = item["topic_name"]
         difficulties[item["difficulty"]] = difficulties.get(item["difficulty"], 0) + 1
-        types[item["type"]] = types.get(item["type"], 0) + 1
+        types[item["question_type"]] = types.get(item["question_type"], 0) + 1
     return {
         "topics": [{"value": key, "label": value} for key, value in topics.items()],
         "difficulties": [{"value": key, "count": value} for key, value in difficulties.items()],

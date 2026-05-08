@@ -15,7 +15,13 @@ import time
 from typing import Any, Dict, List
 
 from programming_education_system.agents.base_agent import BaseAgent
+from programming_education_system.agents.profile_guidance import (
+    build_profile_instruction,
+    build_profile_summary,
+    infer_user_type,
+)
 from programming_education_system.config.llm_config import Config
+from programming_education_system.utils.agent_interaction_logger import log_agent_interaction
 from programming_education_system.utils.llm_utils import llm_client
 
 logger = logging.getLogger(__name__)
@@ -59,7 +65,13 @@ class AnswerEvaluationAgent(BaseAgent):
         super().__init__("AnswerEvaluationAgent")
         self.personal_agent = personal_agent
 
-    async def evaluate_code(self, code: str, user_id: str, question_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate_code(
+        self,
+        code: str,
+        user_id: str,
+        question_context: Dict[str, Any],
+        user_profile: Dict[str, Any],
+    ) -> Dict[str, Any]:
         syntax = self._syntax_check(code)
         style = self._style_check(code)
         security = self._security_check(code, syntax)
@@ -67,7 +79,7 @@ class AnswerEvaluationAgent(BaseAgent):
         run_result = await self._run_code(code, syntax_valid=syntax["valid"], security=security)
         test_result = await self._run_example_tests(code, question_context, syntax, security)
         llm_feedback = await self._llm_feedback(
-            code, question_context, syntax, style, run_result, diagnostics, test_result
+            code, question_context, syntax, style, run_result, diagnostics, test_result, user_profile
         )
         overall_score = self._calculate_score(syntax, style, security, run_result)
         if diagnostics.get("issue_count"):
@@ -85,17 +97,32 @@ class AnswerEvaluationAgent(BaseAgent):
                 "execution": run_result,
                 "example_tests": test_result,
                 "diagnostics": diagnostics,
+                "user_profile_summary": build_profile_summary(user_profile),
             },
             "personalized": True,
         }
 
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
         user_id = request["user_id"]
+        user_profile = await self._load_user_profile(user_id)
+        log_agent_interaction(
+            "sub_agent_received",
+            "MainAgent",
+            self.name,
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload={
+                "content": request.get("content"),
+                "intent_analysis": request.get("intent_analysis", {}),
+                "task_context": request.get("context", {}).get("task_context"),
+                "user_type": infer_user_type(user_profile),
+            },
+        )
         code, question_info = self._parse_evaluation_request(request["content"])
         analysis = request.get("intent_analysis", {})
         if analysis.get("topic") and question_info.get("topic") == "general":
             question_info["topic"] = analysis["topic"]
-        result = await self.evaluate_code(code, user_id, question_info)
+        result = await self.evaluate_code(code, user_id, question_info, user_profile)
 
         await self.personal_agent.track_user_behavior(
             {
@@ -116,7 +143,23 @@ class AnswerEvaluationAgent(BaseAgent):
         )
 
         response = f"## 代码评估报告\n**综合得分**: {result['overall_score']}/100\n\n{result['feedback']}"
-        return {"response": response, "details": result, "success": True}
+        response_data = {"response": response, "details": result, "success": True}
+        log_agent_interaction(
+            "sub_agent_completed",
+            self.name,
+            "MainAgent",
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload=response_data,
+        )
+        return response_data
+
+    async def _load_user_profile(self, user_id: str) -> Dict[str, Any]:
+        try:
+            return await self.personal_agent.get_user_profile(user_id)
+        except Exception as exc:
+            logger.warning("Loading user profile for evaluation failed: %s", exc)
+            return {}
 
     def _parse_evaluation_request(self, content: str) -> tuple[str, Dict[str, Any]]:
         stripped_content = content.strip()
@@ -394,6 +437,7 @@ class AnswerEvaluationAgent(BaseAgent):
         run_result: Dict[str, Any],
         diagnostics: Dict[str, Any],
         test_result: Dict[str, Any],
+        user_profile: Dict[str, Any],
     ) -> str:
         system_prompt = (
             "角色：你是严谨、耐心的编程助教。\n"
@@ -401,8 +445,14 @@ class AnswerEvaluationAgent(BaseAgent):
             "约束：不得臆测不存在的运行结果；不得忽略安全问题；不得只给空泛鼓励。\n"
             "教学策略：先指出最可能阻塞程序正确性的 1-3 个问题，再给分级提示和最小修改建议。\n"
             "输出格式：中文 Markdown，包含「主要问题」「分级提示」「修改建议」「做得好的地方」「下一步练习」。"
+            "\n\n"
+            f"{build_profile_instruction(user_profile, 'evaluation')}"
+            "\n评测反馈还必须遵守：初学者优先解释错误原因和最小修改；稳定提升型强调调试方法和测试；进阶型补充复杂度、边界条件和代码质量。"
         )
         user_message = f"""
+用户画像摘要:
+{build_profile_summary(user_profile)}
+
 题目上下文:
 {question_context}
 
@@ -426,7 +476,12 @@ class AnswerEvaluationAgent(BaseAgent):
 {code}
 ```
 """
-        return await llm_client.generate_response(system_prompt, user_message, use_cache=False)
+        return await llm_client.generate_response(
+            system_prompt,
+            user_message,
+            use_cache=False,
+            task_type="evaluation",
+        )
 
     @staticmethod
     def _get_call_name(func: ast.AST) -> str:

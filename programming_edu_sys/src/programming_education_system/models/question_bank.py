@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from programming_education_system.config.llm_config import Config
+from programming_education_system.models.question_schema import normalize_question
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class Question:
         self.metadata = metadata or {}
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        data = {
             "id": self.id,
             "topic": self.topic,
             "content": self.content,
@@ -85,6 +86,11 @@ class Question:
             "source": self.source,
             "metadata": self.metadata,
         }
+        return normalize_question(
+            data,
+            source=self.source,
+            question_id=f"bank_{self.id}",
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Question":

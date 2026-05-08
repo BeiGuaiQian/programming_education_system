@@ -11,7 +11,7 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
@@ -942,6 +942,33 @@ class AppStore:
                 """,
                 (username, limit),
             ).fetchall()
+            signal_event_rows = conn.execute(
+                """
+                SELECT event_type, target_type, target_id, duration_seconds, metadata, created_at
+                FROM learning_events
+                WHERE username = ?
+                ORDER BY id ASC
+                """,
+                (username,),
+            ).fetchall()
+            question_submission_rows = conn.execute(
+                """
+                SELECT question_id, passed, score, submitted_at
+                FROM question_submissions
+                WHERE username = ?
+                ORDER BY id ASC
+                """,
+                (username,),
+            ).fetchall()
+            lesson_submission_rows = conn.execute(
+                """
+                SELECT lesson_id, passed, score, submitted_at
+                FROM lesson_submissions
+                WHERE username = ?
+                ORDER BY id ASC
+                """,
+                (username,),
+            ).fetchall()
             recent_rows = conn.execute(
                 """
                 SELECT event_type, target_type, target_id, duration_seconds, metadata, created_at
@@ -971,6 +998,11 @@ class AppStore:
             for row in target_rows
             if float(row["duration_seconds"] or 0.0) >= 180 and str(row["target_type"]) in {"question", "lesson"}
         ]
+        learning_signals = self._build_learning_signals(
+            [self._decode_event_row(row) for row in signal_event_rows],
+            [dict(row) for row in question_submission_rows],
+            [dict(row) for row in lesson_submission_rows],
+        )
         return {
             "preferences": {
                 "learning_goal": user.get("learning_goal") or "",
@@ -983,6 +1015,187 @@ class AppStore:
             "target_focus": [dict(row) for row in target_rows],
             "stuck_targets": stuck_targets[:5],
             "recent_events": recent_events,
+            "learning_signals": learning_signals,
+        }
+
+    @staticmethod
+    def _decode_event_row(row: Any) -> Dict[str, Any]:
+        data = dict(row)
+        if data.get("metadata"):
+            try:
+                data["metadata"] = json.loads(data["metadata"])
+            except (TypeError, json.JSONDecodeError):
+                data["metadata"] = {}
+        else:
+            data["metadata"] = {}
+        return data
+
+    @staticmethod
+    def _build_first_pass_stats(rows: List[Dict[str, Any]], target_key: str) -> Dict[str, Any]:
+        if not rows:
+            return {
+                "target_count": 0,
+                "first_pass_count": 0,
+                "first_pass_rate": 0.0,
+                "average_attempts": 0.0,
+            }
+        per_target: Dict[str, Dict[str, Any]] = {}
+        for row in rows:
+            target_id = str(row.get(target_key) or "")
+            if not target_id:
+                continue
+            item = per_target.setdefault(target_id, {"attempts": 0, "first_pass": None})
+            item["attempts"] += 1
+            if item["first_pass"] is None:
+                item["first_pass"] = bool(row.get("passed"))
+        target_count = len(per_target)
+        first_pass_count = sum(1 for item in per_target.values() if item["first_pass"])
+        return {
+            "target_count": target_count,
+            "first_pass_count": first_pass_count,
+            "first_pass_rate": round(first_pass_count / target_count, 3) if target_count else 0.0,
+            "average_attempts": round(
+                sum(int(item["attempts"]) for item in per_target.values()) / target_count,
+                2,
+            )
+            if target_count
+            else 0.0,
+        }
+
+    @staticmethod
+    def _new_topic_metric(topic: str) -> Dict[str, Any]:
+        return {
+            "topic": topic,
+            "submissions": 0,
+            "passed": 0,
+            "failed": 0,
+            "pass_rate": 0.0,
+            "first_attempt_targets": 0,
+            "first_passed_targets": 0,
+            "first_pass_rate": 0.0,
+            "answer_views": 0,
+            "hint_views": 0,
+            "dwell_seconds": 0.0,
+            "average_dwell_seconds": 0.0,
+            "dwell_event_count": 0,
+            "consecutive_failures": 0,
+        }
+
+    def _build_learning_signals(
+        self,
+        events: List[Dict[str, Any]],
+        question_submissions: List[Dict[str, Any]],
+        lesson_submissions: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        topic_metrics: Dict[str, Dict[str, Any]] = {}
+        target_first_attempt: Set[str] = set()
+        current_failure_streak: Dict[str, int] = {}
+        answer_view_count = 0
+        hint_view_count = 0
+        open_count = 0
+        long_dwell_targets: Dict[str, Dict[str, Any]] = {}
+
+        for event in events:
+            event_type = str(event.get("event_type") or "")
+            target_type = str(event.get("target_type") or "")
+            target_id = str(event.get("target_id") or "")
+            metadata = event.get("metadata") or {}
+            topic = str(metadata.get("topic") or "general")
+            metric = topic_metrics.setdefault(topic, self._new_topic_metric(topic))
+
+            if event_type.endswith("_open"):
+                open_count += 1
+
+            if event_type in {"question_answer_view", "lesson_answer_view", "answer_view"}:
+                answer_view_count += 1
+                metric["answer_views"] += 1
+
+            if event_type in {"question_hint_view", "lesson_hint_view", "hint_view", "question_hints_visible"}:
+                hint_view_count += 1
+                metric["hint_views"] += 1
+
+            duration = float(event.get("duration_seconds") or 0.0)
+            if duration > 0 and target_type in {"question", "lesson"}:
+                metric["dwell_seconds"] += duration
+                metric["dwell_event_count"] += 1
+                if duration >= 180 and target_id:
+                    long_dwell_targets[target_id] = {
+                        "target_type": target_type,
+                        "target_id": target_id,
+                        "topic": topic,
+                        "duration_seconds": round(
+                            float(long_dwell_targets.get(target_id, {}).get("duration_seconds", 0.0)) + duration,
+                            1,
+                        ),
+                    }
+
+            if event_type not in {"question_submit", "lesson_submit"}:
+                continue
+
+            passed = bool(metadata.get("passed"))
+            metric["submissions"] += 1
+            if passed:
+                metric["passed"] += 1
+                current_failure_streak[topic] = 0
+            else:
+                metric["failed"] += 1
+                current_failure_streak[topic] = current_failure_streak.get(topic, 0) + 1
+
+            target_key = f"{target_type}:{target_id}" if target_id else f"{event_type}:{len(target_first_attempt)}"
+            if target_key not in target_first_attempt:
+                target_first_attempt.add(target_key)
+                metric["first_attempt_targets"] += 1
+                if passed:
+                    metric["first_passed_targets"] += 1
+
+        for topic, metric in topic_metrics.items():
+            submissions = int(metric["submissions"])
+            metric["pass_rate"] = round(int(metric["passed"]) / submissions, 3) if submissions else 0.0
+            first_attempts = int(metric["first_attempt_targets"])
+            metric["first_pass_rate"] = (
+                round(int(metric["first_passed_targets"]) / first_attempts, 3) if first_attempts else 0.0
+            )
+            dwell_events = int(metric["dwell_event_count"])
+            metric["average_dwell_seconds"] = (
+                round(float(metric["dwell_seconds"]) / dwell_events, 1) if dwell_events else 0.0
+            )
+            metric["dwell_seconds"] = round(float(metric["dwell_seconds"]), 1)
+            metric["consecutive_failures"] = int(current_failure_streak.get(topic, 0))
+
+        question_first_pass = self._build_first_pass_stats(question_submissions, "question_id")
+        lesson_first_pass = self._build_first_pass_stats(lesson_submissions, "lesson_id")
+        target_count = int(question_first_pass["target_count"]) + int(lesson_first_pass["target_count"])
+        first_pass_count = int(question_first_pass["first_pass_count"]) + int(lesson_first_pass["first_pass_count"])
+        total_submission_count = len(question_submissions) + len(lesson_submissions)
+        interaction_base = max(open_count, total_submission_count, 1)
+        consecutive_failures_by_topic = {
+            topic: int(metric["consecutive_failures"])
+            for topic, metric in topic_metrics.items()
+            if int(metric.get("consecutive_failures", 0)) > 0
+        }
+
+        return {
+            "total_submission_count": total_submission_count,
+            "question_submission_count": len(question_submissions),
+            "lesson_submission_count": len(lesson_submissions),
+            "first_pass_rate": round(first_pass_count / target_count, 3) if target_count else 0.0,
+            "question_first_pass_rate": question_first_pass["first_pass_rate"],
+            "lesson_first_pass_rate": lesson_first_pass["first_pass_rate"],
+            "average_attempts_per_question": question_first_pass["average_attempts"],
+            "average_attempts_per_lesson": lesson_first_pass["average_attempts"],
+            "answer_view_count": answer_view_count,
+            "hint_view_count": hint_view_count,
+            "answer_view_rate": round(answer_view_count / interaction_base, 3),
+            "hint_view_rate": round(hint_view_count / interaction_base, 3),
+            "frequent_answer_view": answer_view_count >= 3 and answer_view_count / interaction_base >= 0.25,
+            "frequent_hint_view": hint_view_count >= 3 and hint_view_count / interaction_base >= 0.35,
+            "consecutive_failures_by_topic": consecutive_failures_by_topic,
+            "long_dwell_targets": sorted(
+                long_dwell_targets.values(),
+                key=lambda item: float(item.get("duration_seconds", 0.0)),
+                reverse=True,
+            )[:5],
+            "topic_metrics": topic_metrics,
         }
 
     def _get_session(self, column: str, hashed_token: str) -> Optional[Dict[str, Any]]:

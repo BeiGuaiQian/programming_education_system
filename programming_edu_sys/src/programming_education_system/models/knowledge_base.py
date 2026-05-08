@@ -133,6 +133,42 @@ class KnowledgeBase:
             )
         return "\n\n".join(blocks)
 
+    def format_context_for_prompt(
+        self,
+        retrieval_context: Dict[str, Any],
+        max_hits: int = 2,
+        max_text_chars: int = 420,
+        max_example_chars: int = 220,
+    ) -> str:
+        hits = retrieval_context.get("hits", [])
+        if not hits:
+            return "未检索到课程资料。"
+
+        blocks = []
+        for hit in hits[:max_hits]:
+            examples = "\n".join(
+                f"示例: {self._truncate_for_prompt(str(example), max_example_chars)}"
+                for example in hit.get("examples", [])[:1]
+            )
+            source = hit.get("source", "knowledge_base")
+            url = f" URL: {hit['url']}" if hit.get("url") else ""
+            text = self._truncate_for_prompt(str(hit.get("text", "")), max_text_chars)
+            blocks.append(
+                f"[{hit['rank']}] {hit['title']} ({source}{url})\n"
+                f"主题: {hit['topic']}\n"
+                f"检索方式: {hit.get('retrieval_mode', 'lexical')}\n"
+                f"内容: {text}\n"
+                f"{examples}".strip()
+            )
+        return "\n\n".join(blocks)
+
+    @staticmethod
+    def _truncate_for_prompt(text: str, max_chars: int) -> str:
+        compact = re.sub(r"\s+", " ", text).strip()
+        if len(compact) <= max_chars:
+            return compact
+        return compact[: max(0, max_chars - 1)].rstrip() + "…"
+
     def _lexical_search(
         self, normalized_query: str, topic: Optional[str] = None, limit: int = 8
     ) -> List[Dict[str, Any]]:
@@ -393,7 +429,7 @@ class KnowledgeBase:
             if self._has_unasked_specialized_term(title, query):
                 score *= 0.65
         if query_concepts and not any(concept in document for concept in query_concepts):
-            score *= 0.45
+            return 0.0
         return score
 
     def _tokens_for_chunk(self, chunk: KnowledgeChunk) -> List[str]:
@@ -443,6 +479,52 @@ class KnowledgeBase:
                 for index in range(max(0, len(cjk_text) - size + 1))
             )
         return ascii_tokens + cjk_tokens
+
+    @staticmethod
+    def _extract_concepts(text: str) -> List[str]:
+        concept_terms = [
+            "函数",
+            "列表",
+            "元组",
+            "字典",
+            "集合",
+            "循环",
+            "条件",
+            "变量",
+            "赋值",
+            "字符串",
+            "索引",
+            "切片",
+            "缩进",
+            "递归",
+            "排序",
+            "查找",
+            "二分",
+            "类",
+            "对象",
+            "继承",
+            "append",
+            "return",
+            "print",
+            "def",
+            "class",
+        ]
+        lowered = text.lower()
+        return [term for term in concept_terms if term.lower() in lowered]
+
+    @staticmethod
+    def _has_unasked_specialized_term(title: str, query: str) -> bool:
+        specialized_terms = [
+            "文档字符串",
+            "lambda",
+            "类型标注",
+            "默认值",
+            "关键字参数",
+            "闭包",
+            "装饰器",
+            "生成器",
+        ]
+        return any(term in title and term not in query for term in specialized_terms)
 
     @staticmethod
     def _extract_concepts(text: str) -> List[str]:
