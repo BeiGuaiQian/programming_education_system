@@ -69,16 +69,17 @@ class UserCognitionUpdateAgent:
         if "learning_goals" in profile_data:
             profile.learning_goals = [str(goal) for goal in profile_data.get("learning_goals", []) if str(goal).strip()]
 
-        topic = profile_data.get("topic") or "python_basics"
-        is_correct = self._infer_correctness(profile_data)
-        if topic:
-            profile.update_mastery(topic, is_correct, str(profile_data.get("difficulty", "beginner")))
-            mastery = profile.knowledge_mastery[topic]
-            for pattern in profile_data.get("error_patterns", []) or []:
-                if pattern not in mastery.error_patterns:
-                    mastery.error_patterns.append(str(pattern))
-            if topic not in profile.preferred_topics:
-                profile.preferred_topics.append(topic)
+        if not profile_data.get("skip_mastery_update", False):
+            topic = profile_data.get("topic") or "python_basics"
+            is_correct = self._infer_correctness(profile_data)
+            if topic:
+                profile.update_mastery(topic, is_correct, str(profile_data.get("difficulty", "beginner")))
+                mastery = profile.knowledge_mastery[topic]
+                for pattern in profile_data.get("error_patterns", []) or []:
+                    if pattern not in mastery.error_patterns:
+                        mastery.error_patterns.append(str(pattern))
+                if topic not in profile.preferred_topics:
+                    profile.preferred_topics.append(topic)
 
         learning_signals = (
             profile_data.get("real_learning_signals")

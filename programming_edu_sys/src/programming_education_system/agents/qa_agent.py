@@ -1,4 +1,4 @@
-﻿"""Question answering agent with knowledge-base lookup and cognition-aware fallback."""
+﻿"""Question answering agent with knowledge-base lookup and profile-aware prompting."""
 
 from __future__ import annotations
 
@@ -11,9 +11,6 @@ from programming_education_system.agents.profile_guidance import (
     infer_user_type,
 )
 from programming_education_system.agents.base_agent import BaseAgent
-from programming_education_system.cognition_judger.cognitive_api_scientific import (
-    get_scientific_cognitive_api_sync,
-)
 from programming_education_system.models.knowledge_base import KnowledgeBase
 from programming_education_system.utils.agent_interaction_logger import log_agent_interaction
 from programming_education_system.utils.llm_utils import llm_client
@@ -22,25 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 class ThinkingQAAgent:
-    """Handles open-ended questions using cognition-aware prompting."""
+    """Handles open-ended questions using the personalized profile as the learner model."""
 
     def __init__(self) -> None:
         self.name = "ThinkingQAAgent"
-        self.cognition_api = get_scientific_cognitive_api_sync()
 
     async def think_and_answer(
         self, complex_question: str, user_id: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         context = context or {}
         user_profile = context.get("user_profile") or {}
-        cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
-        learning_params = await self.cognition_api.get_personalized_learning_parameters(
-            user_id, "explanation"
-        )
         teaching_mode = context.get("intent_analysis", {}).get("teaching_mode", "explain")
         system_prompt = self._build_system_prompt(
-            cognitive_state,
-            learning_params,
             teaching_mode,
             user_profile=user_profile,
         )
@@ -85,25 +75,21 @@ class ThinkingQAAgent:
         return {
             "answer": answer,
             "answer_source": answer_source,
-            "cognitive_level_used": cognitive_state["overall_cognitive_level"],
-            "learning_parameters": learning_params,
+            "profile_parameters": self._profile_parameters(user_profile),
             "personalization_applied": True,
             "retrieval_context": retrieval_context,
-            "user_type": infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state),
+            "user_type": infer_user_type(user_profile),
             "profile_summary": build_profile_summary(user_profile) if user_profile else "",
         }
 
     def _build_system_prompt(
         self,
-        cognitive_state: Dict[str, Any],
-        learning_params: Dict[str, Any],
         teaching_mode: str = "explain",
         user_profile: Optional[Dict[str, Any]] = None,
     ) -> str:
-        level = cognitive_state["overall_cognitive_level"]
-        depth = learning_params.get("parameters", {}).get("explanation_depth", 0.7)
         user_profile = user_profile or {}
-        user_type = infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state)
+        user_type = infer_user_type(user_profile)
+        depth = self._profile_parameters(user_profile)["explanation_depth"]
         mode_instruction = {
             "hint": "优先给提示和引导问题，不要一开始就给完整答案。",
             "quiz": "解释后给一个 1 分钟小测题来检查理解。",
@@ -142,6 +128,30 @@ class ThinkingQAAgent:
         )
 
     @staticmethod
+    def _profile_parameters(user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        user_type = infer_user_type(user_profile)
+        if user_type == "beginner":
+            return {
+                "explanation_depth": 0.85,
+                "example_complexity": "low",
+                "hint_strategy": "guided",
+                "recommended_difficulty": "beginner",
+            }
+        if user_type == "advanced":
+            return {
+                "explanation_depth": 0.55,
+                "example_complexity": "high",
+                "hint_strategy": "minimal",
+                "recommended_difficulty": "advanced",
+            }
+        return {
+            "explanation_depth": 0.7,
+            "example_complexity": "medium",
+            "hint_strategy": "balanced",
+            "recommended_difficulty": "intermediate",
+        }
+
+    @staticmethod
     def _format_list(items: List[Any], limit: int = 6) -> str:
         if not isinstance(items, list):
             return ""
@@ -163,15 +173,6 @@ class ThinkingQAAgent:
     @staticmethod
     def _is_llm_unavailable_answer(answer: str) -> bool:
         return "目前无法调用大模型" in str(answer or "")
-
-    @staticmethod
-    def _user_type_from_cognition(cognitive_state: Dict[str, Any]) -> str:
-        level = float(cognitive_state.get("overall_cognitive_level", 0.5) or 0.5)
-        if level < 0.4:
-            return "beginner"
-        if level < 0.7:
-            return "intermediate"
-        return "advanced"
 
     @staticmethod
     def _build_retrieval_fallback_answer(
@@ -215,7 +216,6 @@ class KnowledgeBaseRetrievalAgent:
 
     def __init__(self) -> None:
         self.knowledge_base = KnowledgeBase()
-        self.cognition_api = get_scientific_cognitive_api_sync()
         self._enhance_knowledge_base()
 
     def _enhance_knowledge_base(self) -> None:
@@ -254,13 +254,11 @@ class KnowledgeBaseRetrievalAgent:
         best_match = results[0]
         if best_match.get("score", 0) < 4.0:
             return {"found": False, "answer": "", "retrieval_context": self.knowledge_base.build_context(question)}
-        cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
         personalized_answer = await self._personalize_knowledge_answer(
             best_match,
-            cognitive_state,
             user_profile=user_profile,
         )
-        user_type = infer_user_type(user_profile or {}) if user_profile else self._user_type_from_cognition(cognitive_state)
+        user_type = infer_user_type(user_profile or {})
         return {
             "found": True,
             "answer": personalized_answer,
@@ -280,12 +278,11 @@ class KnowledgeBaseRetrievalAgent:
     async def _personalize_knowledge_answer(
         self,
         knowledge_item: Dict[str, Any],
-        cognitive_state: Dict[str, Any],
         user_profile: Optional[Dict[str, Any]] = None,
     ) -> str:
         base_answer = str(knowledge_item.get("answer", ""))
         user_profile = user_profile or {}
-        user_type = infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state)
+        user_type = infer_user_type(user_profile)
         if user_type == "beginner":
             return (
                 "先抓住核心想法："
@@ -303,15 +300,6 @@ class KnowledgeBaseRetrievalAgent:
             f"{base_answer}\n\n"
             "建议顺手写一个小例子，把概念和代码对应起来。"
         )
-
-    @staticmethod
-    def _user_type_from_cognition(cognitive_state: Dict[str, Any]) -> str:
-        level = float(cognitive_state.get("overall_cognitive_level", 0.5) or 0.5)
-        if level < 0.4:
-            return "beginner"
-        if level < 0.7:
-            return "intermediate"
-        return "advanced"
 
     @staticmethod
     def _citation_from_result(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -336,7 +324,6 @@ class QAAgent(BaseAgent):
         self.thinking_agent = ThinkingQAAgent()
         self.kb_agent = KnowledgeBaseRetrievalAgent()
         self.personal_agent = personal_agent
-        self.cognition_api = get_scientific_cognitive_api_sync()
 
     async def answer_question(
         self, question: str, user_id: str, context: Optional[Dict[str, Any]] = None
@@ -384,9 +371,8 @@ class QAAgent(BaseAgent):
             "examples": [],
             "source": thinking_result.get("answer_source", "llm_thinking"),
             "needs_thinking": True,
-            "cognitive_level_used": thinking_result["cognitive_level_used"],
             "personalized": thinking_result["personalization_applied"],
-            "learning_parameters": thinking_result.get("learning_parameters", {}),
+            "profile_parameters": thinking_result.get("profile_parameters", {}),
             "retrieval_context": retrieval_context,
             "citations": citations,
             "user_type": thinking_result.get("user_type", user_type),
@@ -451,13 +437,12 @@ class QAAgent(BaseAgent):
                 "topic": topic,
                 "complexity": "complex" if result["needs_thinking"] else "simple",
                 "content": question[:100],
-                "cognitive_level": result.get("cognitive_level_used", 0.5),
                 "personalization_applied": result.get("personalized", False),
                 "user_type": result.get("user_type") or infer_user_type(user_profile),
             }
         )
 
-        cognitive_insights = await self._get_scientific_cognitive_insights(user_id, topic)
+        profile_insights = self._get_profile_insights(user_profile, topic)
         response_data = {
             "success": True,
             "response": result["response"],
@@ -469,14 +454,14 @@ class QAAgent(BaseAgent):
                 "personalized": result.get("personalized", False),
                 "user_type": result.get("user_type") or infer_user_type(user_profile),
                 "profile_summary": result.get("profile_summary") or build_profile_summary(user_profile),
-                "cognitive_insights": cognitive_insights,
+                "profile_insights": profile_insights,
                 "retrieval_context": result.get("retrieval_context", {}),
                 "citations": result.get("citations", []),
             },
         }
-        if result["needs_thinking"] or cognitive_insights.get("needs_improvement", False):
-            response_data["details"]["learning_tips"] = await self._generate_scientific_learning_tips(
-                user_id, topic
+        if result["needs_thinking"] or profile_insights.get("needs_improvement", False):
+            response_data["details"]["learning_tips"] = self._generate_profile_learning_tips(
+                user_profile, topic
             )
         log_agent_interaction(
             "sub_agent_completed",
@@ -488,60 +473,50 @@ class QAAgent(BaseAgent):
         )
         return response_data
 
-    async def _get_scientific_cognitive_insights(self, user_id: str, topic: str) -> Dict[str, Any]:
-        cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
-        learning_recs = await self.cognition_api.get_learning_recommendations(user_id, f"study {topic}")
-        topic_mastery = self._analyze_topic_mastery(cognitive_state, topic)
+    def _get_profile_insights(self, user_profile: Dict[str, Any], topic: str) -> Dict[str, Any]:
+        topic_mastery = self._analyze_topic_mastery(user_profile, topic)
+        user_type = infer_user_type(user_profile)
+        weak_topics = list(user_profile.get("weak_topics") or [])
+        recommended_difficulty = {
+            "beginner": "beginner",
+            "intermediate": "intermediate",
+            "advanced": "advanced",
+        }.get(user_type, "intermediate")
         return {
-            "current_level": cognitive_state["overall_cognitive_level"],
-            "learning_trend": cognitive_state.get("learning_trend", "stable"),
+            "profile_source": "personalized_learning_agent",
+            "user_type": user_type,
             "topic_mastery": topic_mastery,
-            "needs_improvement": topic_mastery < 0.6,
-            "recommended_difficulty": learning_recs.get("recommendations", {}).get(
-                "recommended_difficulty", "intermediate"
-            ),
-            "focus_areas": learning_recs.get("recommendations", {}).get("focus_areas", []),
+            "needs_improvement": topic_mastery < 0.6 or topic in weak_topics,
+            "recommended_difficulty": recommended_difficulty,
+            "focus_areas": weak_topics[:3] or [topic],
         }
 
-    async def _generate_scientific_learning_tips(self, user_id: str, topic: str) -> List[str]:
-        insights = await self._get_scientific_cognitive_insights(user_id, topic)
-        level = insights.get("current_level", 0.5)
-        tips: List[str] = []
-        if level < 0.4:
-            tips.extend(
-                [
-                    "Strengthen the basics first with short daily practice.",
-                    "Rebuild the idea using one tiny example before solving a harder problem.",
-                ]
-            )
-        elif level < 0.7:
-            tips.extend(
-                [
-                    "Mix concept review with hands-on coding to reinforce understanding.",
-                    "Try a slightly harder variation after you finish a standard example.",
-                ]
-            )
+    def _generate_profile_learning_tips(self, user_profile: Dict[str, Any], topic: str) -> List[str]:
+        user_type = infer_user_type(user_profile)
+        if user_type == "beginner":
+            tips = [
+                "先用一个最小例子把概念跑通。",
+                "写代码前先标清输入、处理和输出。",
+            ]
+        elif user_type == "advanced":
+            tips = [
+                "可以比较不同写法的边界条件和复用性。",
+                "尝试把这个知识点封装成一个可测试的小函数。",
+            ]
         else:
-            tips.extend(
-                [
-                    "Compare multiple solutions and reason about tradeoffs.",
-                    "Turn this topic into a reusable pattern or utility to deepen mastery.",
-                ]
-            )
-        tips.append(f"Next focus topic: {topic}")
+            tips = [
+                "概念和代码交替练习，避免只看解释。",
+                "完成标准例子后再做一个小变体。",
+            ]
+        tips.append(f"下一步关注：{topic}")
         return tips
 
-    def _analyze_topic_mastery(self, cognitive_state: Dict[str, Any], topic: str) -> float:
-        knowledge_domains = cognitive_state.get("knowledge_domains", {})
-        topic_to_domain = {
-            "python_basics": "python_basics",
-            "data_structures": "data_structures",
-            "algorithms": "algorithms",
-            "oop": "oop",
-            "web_development": "python_basics",
-            "data_science": "algorithms",
-        }
-        domain = topic_to_domain.get(topic, "python_basics")
-        domain_score = knowledge_domains.get(domain, 0.5)
-        understanding_score = cognitive_state.get("cognitive_dimensions", {}).get("understand", 0.5)
-        return (domain_score + understanding_score) / 2
+    def _analyze_topic_mastery(self, user_profile: Dict[str, Any], topic: str) -> float:
+        mastery = user_profile.get("knowledge_mastery") or {}
+        if topic in mastery:
+            try:
+                return float(mastery[topic])
+            except (TypeError, ValueError):
+                return 0.5
+        weak_topics = user_profile.get("weak_topics") or []
+        return 0.45 if topic in weak_topics else 0.5

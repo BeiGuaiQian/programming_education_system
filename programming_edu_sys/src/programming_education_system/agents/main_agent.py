@@ -302,36 +302,6 @@ class MainAgent(BaseAgent):
             result["original_content"] = request.get("enhancement_info", {}).get("original_content", request["content"])
         return result
 
-    async def _sync_external_profile(self, request: Dict[str, Any]) -> None:
-        external_context = request.get("context", {}).get("external_learning_context", {})
-        profile = external_context.get("profile") or {}
-        level = external_context.get("level") or {}
-        behavior = external_context.get("behavior") or {}
-        progress = external_context.get("progress") or {}
-        question_progress = external_context.get("question_progress") or {}
-        learning_signals = external_context.get("learning_signals") or behavior.get("learning_signals") or {}
-        if not any([profile, level, behavior, progress, question_progress, learning_signals]):
-            return
-        await self.personal_agent.update_user_profile(
-            request["user_id"],
-            {
-                "learning_style": profile.get("learning_style") or "balanced",
-                "learning_goals": [profile.get("learning_goal")] if profile.get("learning_goal") else [],
-                "programming_level": level.get("name") or "beginner",
-                "content": request.get("content", ""),
-                "topic": str(
-                    (request.get("context", {}).get("task_context") or {}).get(
-                        "topic_hint",
-                        "general_programming",
-                    )
-                ),
-                "lesson_progress": progress,
-                "question_progress": question_progress,
-                "learning_behavior": behavior,
-                "real_learning_signals": learning_signals,
-            },
-        )
-
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
         log_agent_interaction(
             "main_agent_received",
@@ -348,7 +318,6 @@ class MainAgent(BaseAgent):
             },
         )
         enhanced_request = await self.enhance_request_with_context(request)
-        await self._sync_external_profile(enhanced_request)
         analysis = await self.analyze_intent(enhanced_request)
         log_agent_interaction(
             "main_agent_intent_decision",
@@ -363,20 +332,6 @@ class MainAgent(BaseAgent):
             },
         )
         result = await self.dispatch_to_sub_agent(analysis, enhanced_request)
-        await self.personal_agent.track_user_behavior(
-            {
-                "user_id": enhanced_request["user_id"],
-                "intent": analysis.intent,
-                "topic": analysis.topic,
-                "difficulty": analysis.difficulty,
-                "content": enhanced_request["content"],
-                "original_content": enhanced_request.get("original_content", enhanced_request["content"]),
-                "was_enhanced": enhanced_request.get("enhancement_info", {}).get("was_enhanced", False),
-                "context_used": enhanced_request.get("enhancement_info", {}).get("context_used", False),
-                "external_learning_context": enhanced_request.get("context", {}).get("external_learning_context", {}),
-                "timestamp": enhanced_request.get("timestamp", "unknown"),
-            }
-        )
         return result
 
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:

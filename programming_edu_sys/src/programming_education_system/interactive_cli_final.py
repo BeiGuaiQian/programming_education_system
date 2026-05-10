@@ -23,7 +23,7 @@ class FinalInteractiveCLI:
         self.user_id = "interactive_user"
         self.session_history: List[Dict[str, Any]] = []
         self.logger = logging.getLogger("CLI-Final")
-        self.show_cognitive_insights = True
+        self.show_profile_insights = True
 
     async def start_session(self) -> None:
         print("\n" + "=" * 60)
@@ -52,14 +52,14 @@ class FinalInteractiveCLI:
                 if lowered in {"clear", "清空"}:
                     self._clear_history()
                     continue
-                if lowered in {"cognitive", "认知"}:
-                    await self._toggle_cognitive_mode()
+                if lowered in {"profile", "画像"}:
+                    await self._toggle_profile_mode()
                     continue
                 if lowered in {"status", "状态"}:
                     await self._show_system_status()
                     continue
                 if lowered in {"report", "报告"}:
-                    await self._show_cognitive_report()
+                    await self._show_profile_report()
                     continue
 
                 await self._process_user_input(user_input)
@@ -81,7 +81,7 @@ class FinalInteractiveCLI:
                     "type": result.get("request_type", "unknown"),
                     "success": result.get("success", False),
                     "timestamp": asyncio.get_event_loop().time(),
-                    "cognitive_insights": result.get("cognitive_insights", {}),
+                    "profile_insights": result.get("details", {}).get("profile_insights", {}),
                 }
             )
             self._display_final_result(result)
@@ -95,7 +95,7 @@ class FinalInteractiveCLI:
                     "type": "error",
                     "success": False,
                     "timestamp": asyncio.get_event_loop().time(),
-                    "cognitive_insights": {},
+                    "profile_insights": {},
                 }
             )
 
@@ -127,37 +127,21 @@ class FinalInteractiveCLI:
                 for tip in details["learning_tips"][:5]:
                     print(f"- {tip}")
 
-        if self.show_cognitive_insights:
-            self._display_cognitive_insights(result.get("cognitive_insights", {}))
+        if self.show_profile_insights:
+            self._display_profile_insights(details.get("profile_insights", {}))
         print("=" * 60)
 
-    def _display_cognitive_insights(self, insights: Dict[str, Any]) -> None:
-        user_cognitive_state = insights.get("user_cognitive_state", {})
-        if not user_cognitive_state:
+    def _display_profile_insights(self, insights: Dict[str, Any]) -> None:
+        if not insights:
             return
 
-        print("\n认知洞察:")
-        print(f"- 认知水平: {user_cognitive_state.get('overall_cognitive_level', 0.5):.2f}")
-        print(f"- 学习趋势: {user_cognitive_state.get('learning_trend', 'stable')}")
-
-        learning_chars = user_cognitive_state.get("learning_characteristics", {})
-        if learning_chars:
-            print(f"- 学习风格: {learning_chars.get('learning_style', 'balanced')}")
-            print(f"- 学习节奏: {learning_chars.get('learning_pace', 'moderate')}")
-            print(f"- 学习信心: {learning_chars.get('confidence_level', 0.5):.2f}")
-
-        dimensions = user_cognitive_state.get("cognitive_dimensions", {})
-        if dimensions:
-            strongest = max(dimensions.items(), key=lambda item: item[1])
-            weakest = min(dimensions.items(), key=lambda item: item[1])
-            print(f"- 当前强项: {strongest[0]} ({strongest[1]:.2f})")
-            print(f"- 当前待提升: {weakest[0]} ({weakest[1]:.2f})")
-
-        recommendations = insights.get("learning_recommendations", {}).get("recommendations", {})
-        if recommendations:
-            focus_areas = recommendations.get("focus_areas", [])
-            if focus_areas:
-                print(f"- 建议聚焦: {', '.join(focus_areas)}")
+        print("\n画像洞察:")
+        print(f"- 用户类型: {insights.get('user_type', 'unknown')}")
+        print(f"- 主题掌握度: {float(insights.get('topic_mastery', 0.5)):.2f}")
+        print(f"- 推荐难度: {insights.get('recommended_difficulty', 'intermediate')}")
+        focus_areas = insights.get("focus_areas", [])
+        if focus_areas:
+            print(f"- 建议聚焦: {', '.join(map(str, focus_areas))}")
 
     def _get_intent_display_info(self, intent: str) -> Dict[str, str]:
         intent_info = {
@@ -169,9 +153,9 @@ class FinalInteractiveCLI:
         }
         return intent_info.get(intent, intent_info["unknown"])
 
-    async def _toggle_cognitive_mode(self) -> None:
-        self.show_cognitive_insights = not self.show_cognitive_insights
-        print(f"认知洞察显示已{'开启' if self.show_cognitive_insights else '关闭'}。")
+    async def _toggle_profile_mode(self) -> None:
+        self.show_profile_insights = not self.show_profile_insights
+        print(f"画像洞察显示已{'开启' if self.show_profile_insights else '关闭'}。")
 
     async def _show_system_status(self) -> None:
         status = await self.system.get_system_status()
@@ -181,30 +165,21 @@ class FinalInteractiveCLI:
                 continue
             print(f"- {key}: {value}")
 
-    async def _show_cognitive_report(self) -> None:
-        report = await self.system.get_user_cognitive_report(self.user_id)
+    async def _show_profile_report(self) -> None:
+        report = await self.system.get_user_profile_report(self.user_id)
         if "error" in report:
-            print(f"获取认知报告失败: {report['error']}")
+            print(f"获取用户画像失败: {report['error']}")
             return
 
-        print("\n认知报告:")
-        cognitive_state = report.get("cognitive_state", {})
+        print("\n用户画像报告:")
+        user_profile = report.get("user_profile", {})
         print(f"- 用户: {report.get('user_id', self.user_id)}")
-        print(f"- 认知水平: {cognitive_state.get('overall_cognitive_level', 0.5):.2f}")
-        print(f"- 交互次数: {cognitive_state.get('interaction_count', 0)}")
-
-        progression = report.get("progression_analysis", {}).get("progression_analysis", {})
-        if progression:
-            print(f"- 学习趋势: {progression.get('trend', 'stable')}")
-            print(f"- 进步速率: {progression.get('progress_rate', 0.0):.3f}")
-
-        strengths_weaknesses = report.get("strengths_weaknesses", {})
-        strengths = strengths_weaknesses.get("cognitive_strengths", [])
-        weaknesses = strengths_weaknesses.get("cognitive_weaknesses", [])
-        if strengths:
-            print(f"- 强项: {', '.join(item.get('display_name', item.get('dimension', '')) for item in strengths)}")
-        if weaknesses:
-            print(f"- 待提升: {', '.join(item.get('display_name', item.get('dimension', '')) for item in weaknesses)}")
+        print(f"- 画像来源: {report.get('profile_source', 'personalized_learning_agent')}")
+        print(f"- 当前水平: {user_profile.get('programming_level', 'unknown')}")
+        print(f"- 学习风格: {user_profile.get('learning_style', 'unknown')}")
+        weak_topics = user_profile.get("weak_topics", [])
+        if weak_topics:
+            print(f"- 薄弱主题: {', '.join(map(str, weak_topics[:3]))}")
 
     def _show_help(self) -> None:
         print(
@@ -212,9 +187,9 @@ class FinalInteractiveCLI:
             "- help / 帮助: 查看帮助\n"
             "- history / 历史: 查看最近会话\n"
             "- clear / 清空: 清空会话记录\n"
-            "- cognitive / 认知: 开关认知洞察显示\n"
+            "- profile / 画像: 开关画像洞察显示\n"
             "- status / 状态: 查看系统状态\n"
-            "- report / 报告: 查看认知报告\n"
+            "- report / 报告: 查看用户画像报告\n"
             "- exit / 退出: 退出系统\n"
             "\n直接输入自然语言即可，系统会自动判断是问答、练习、评估还是学习建议。"
         )
