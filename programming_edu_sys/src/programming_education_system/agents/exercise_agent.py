@@ -24,14 +24,6 @@ logger = logging.getLogger(__name__)
 
 DIFFICULTY_ORDER = ["beginner", "intermediate", "advanced"]
 
-SUBTOPIC_KEYWORDS = {
-    "dynamic_programming": ["动态规划", "dp", "dynamic programming", "状态转移", "最优子结构", "爬楼梯", "背包"],
-    "iteration": ["迭代", "循环", "iteration", "iterative", "for", "while"],
-    "recursion": ["递归", "recursion", "recursive", "基准情况", "递归情况"],
-    "sorting": ["排序", "sort", "冒泡", "选择排序", "插入排序", "快速排序"],
-    "searching": ["查找", "搜索", "search", "二分", "binary search"],
-    "functions": ["函数", "function", "def", "return"],
-}
 
 
 class EnhancedExerciseGenerationAgent(BaseAgent):
@@ -67,7 +59,13 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
             },
         )
 
-        if self._is_answer_request(content) or analysis.get("needs_exercise_context") or request.get("target_exercise"):
+        task_context = context.get("task_context", {}) or {}
+        context_action = str(task_context.get("action") or "")
+        if (
+            context_action in {"answer_current_exercise", "hint_current_exercise", "clarify_missing_context"}
+            or analysis.get("needs_exercise_context")
+            or request.get("target_exercise")
+        ):
             result = await self._handle_answer_request(
                 user_id,
                 content,
@@ -99,7 +97,7 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
         analysis: Dict[str, Any],
     ) -> Dict[str, Any]:
         profile = context.get("user_profile") or await self._load_user_profile(user_id)
-        constraints = self._build_exercise_constraints(content, context, analysis)
+        constraints = await self._build_exercise_constraints(content, context, analysis, profile)
         topic = constraints["topic"] or self._choose_topic_from_profile(profile)
         difficulty = self._choose_adaptive_difficulty(
             requested=constraints.get("requested_difficulty"),
@@ -109,28 +107,24 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
         )
         constraints["difficulty"] = difficulty
 
-        selection = self._select_question_from_bank(constraints)
+        selection = await self._select_question_from_bank(constraints)
         question = selection.get("question")
         source = "question_bank" if question else "ai_generated"
         if not question:
             question = await self._generate_exercise_with_llm(content, topic, difficulty, profile, constraints)
-            validation = self._analyze_exercise_match(question, constraints)
-            if not validation["valid"]:
-                question = self._build_rule_based_exercise(content, topic, difficulty, constraints)
-                source = "rule_based_generated"
-            else:
-                source = "ai_generated"
+            source = "ai_generated"
 
-        output_analysis = self._analyze_exercise_match(question, constraints)
+        output_analysis = await self._analyze_exercise_match(question, constraints)
         if not output_analysis["valid"] and source == "question_bank":
             question = await self._generate_exercise_with_llm(content, topic, difficulty, profile, constraints)
             source = "ai_generated"
-            output_analysis = self._analyze_exercise_match(question, constraints)
+            output_analysis = await self._analyze_exercise_match(question, constraints)
 
         if not output_analysis["valid"]:
-            question = self._build_rule_based_exercise(content, topic, difficulty, constraints)
-            source = "rule_based_generated"
-            output_analysis = self._analyze_exercise_match(question, constraints)
+            constraints["validation_feedback"] = output_analysis
+            question = await self._generate_exercise_with_llm(content, topic, difficulty, profile, constraints)
+            source = "ai_generated_retry"
+            output_analysis = await self._analyze_exercise_match(question, constraints)
 
         log_agent_interaction(
             "exercise_selection",
@@ -182,7 +176,7 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
     ) -> Dict[str, Any]:
         analysis = analysis or {}
         profile = context.get("user_profile") or await self._load_user_profile(user_id)
-        answer_style = self._build_answer_style(content, context, analysis)
+        answer_style = await self._build_answer_style(content, context, analysis, profile)
         target_question = self._resolve_target_question(context, target_exercise)
         if target_question:
             description = self._question_description(target_question)
@@ -209,7 +203,8 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
                 "success": True,
             }
 
-        if self._is_vague_answer_followup(content):
+        task_context = context.get("task_context", {}) or {}
+        if str(task_context.get("action") or "") == "clarify_missing_context":
             return {
                 "response": "我在当前会话里没有找到可以解答的上一道题。你可以先让我出一道题，或者把题目内容发给我，我再给你讲解。",
                 "details": {"answer_provided": False, "reason": "missing_current_question_context"},
@@ -316,63 +311,105 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
             "answer": normalized["answer"],
         }
 
-    def _build_exercise_constraints(
+    async def _build_exercise_constraints(
         self,
         content: str,
         context: Dict[str, Any],
         analysis: Dict[str, Any],
+        profile: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         task_context = context.get("task_context", {}) or {}
         original_input = str(task_context.get("original_input") or "").strip()
         optimized_input = str(task_context.get("optimized_input") or "").strip()
-        combined = "\n".join([original_input, content, optimized_input]).strip()
-        explicit_difficulty = self._infer_difficulty(combined)
-        analysis_difficulty = str(analysis.get("difficulty") or "")
-        requested_difficulty = explicit_difficulty
-        if not requested_difficulty and analysis_difficulty in {"intermediate", "advanced"}:
-            requested_difficulty = analysis_difficulty
+        profile = profile or context.get("user_profile") or {}
+        fallback_topic = str(
+            analysis.get("topic")
+            or task_context.get("topic_hint")
+            or self._choose_topic_from_profile(profile)
+            or "python_basics"
+        )
+        fallback_difficulty = str(analysis.get("difficulty") or task_context.get("difficulty") or "beginner")
+        if fallback_difficulty not in DIFFICULTY_ORDER:
+            fallback_difficulty = "beginner"
 
-        subtopic = self._infer_subtopic(combined)
-        topic = analysis.get("topic") or self._infer_topic(combined) or "general_programming"
-        if topic == "general_programming" and subtopic in {"dynamic_programming", "iteration", "recursion", "sorting", "searching"}:
-            topic = "algorithms"
-        if topic == "general_programming" and subtopic == "functions":
-            topic = "python_basics"
+        system_prompt = (
+            "You are the exercise agent's task-analysis sub-agent. "
+            "Read the optimized user input, task context, routing analysis, and user profile. "
+            "Produce structured exercise constraints for generation and selection. "
+            "Infer only from the provided structured context and do not answer the user. Return strict JSON only."
+        )
+        user_message = json.dumps(
+            {
+                "current_input": content,
+                "original_input": original_input,
+                "optimized_input": optimized_input,
+                "task_context": task_context,
+                "routing_analysis": analysis,
+                "profile_summary": build_profile_summary(profile),
+                "allowed_topics": [
+                    "python_basics",
+                    "data_structures",
+                    "algorithms",
+                    "oop",
+                    "web_development",
+                    "data_science",
+                    "general_programming",
+                ],
+                "allowed_difficulties": DIFFICULTY_ORDER,
+                "output_schema": {
+                    "topic": fallback_topic,
+                    "subtopic": "short free-text subtopic, empty if none",
+                    "requested_difficulty": fallback_difficulty,
+                    "focus_requirements": ["explicit exercise requirements inferred by the agent"],
+                    "must_use_question_bank": False,
+                    "reason": "short reason",
+                },
+            },
+            ensure_ascii=False,
+        )
+        parsed: Dict[str, Any] = {}
+        try:
+            response = await llm_client.generate_response(
+                system_prompt,
+                user_message,
+                use_cache=False,
+                task_type="exercise",
+            )
+            parsed = self._parse_json_response(response)
+        except Exception as exc:
+            logger.warning("Exercise constraint analysis failed: %s", exc)
 
-        keywords = self._extract_request_keywords(combined, subtopic)
+        topic = str(parsed.get("topic") or fallback_topic or "python_basics")
+        if topic not in {
+            "python_basics",
+            "data_structures",
+            "algorithms",
+            "oop",
+            "web_development",
+            "data_science",
+            "general_programming",
+        }:
+            topic = fallback_topic if fallback_topic != "general_programming" else "python_basics"
+        requested_difficulty = str(parsed.get("requested_difficulty") or fallback_difficulty)
+        if requested_difficulty not in DIFFICULTY_ORDER:
+            requested_difficulty = fallback_difficulty
+        focus_requirements = parsed.get("focus_requirements") or []
+        if not isinstance(focus_requirements, list):
+            focus_requirements = [str(focus_requirements)]
         return {
             "raw_request": content,
             "original_input": original_input or content,
             "optimized_input": optimized_input or content,
             "topic": topic,
-            "subtopic": subtopic,
-            "keywords": keywords,
+            "subtopic": str(parsed.get("subtopic") or "").strip()[:80],
+            "focus_requirements": [str(item)[:120] for item in focus_requirements if str(item).strip()][:8],
             "requested_difficulty": requested_difficulty,
-            "explicit_difficulty": explicit_difficulty,
-            "difficulty": requested_difficulty or analysis_difficulty or "beginner",
+            "explicit_difficulty": requested_difficulty,
+            "difficulty": requested_difficulty,
             "avoid_question_ids": self._recent_question_ids(context),
-            "must_match_keywords": bool(keywords),
+            "must_use_question_bank": bool(parsed.get("must_use_question_bank", False)),
+            "reason": str(parsed.get("reason") or "llm_constraint_analysis")[:120],
         }
-
-    @staticmethod
-    def _infer_subtopic(content: str) -> Optional[str]:
-        lowered = content.lower()
-        for subtopic, keywords in SUBTOPIC_KEYWORDS.items():
-            if any(keyword.lower() in lowered for keyword in keywords):
-                return subtopic
-        return None
-
-    @staticmethod
-    def _extract_request_keywords(content: str, subtopic: Optional[str]) -> List[str]:
-        lowered = content.lower()
-        keywords: List[str] = []
-        if subtopic and subtopic in SUBTOPIC_KEYWORDS:
-            keywords.extend(SUBTOPIC_KEYWORDS[subtopic][:4])
-        for keyword_group in SUBTOPIC_KEYWORDS.values():
-            for keyword in keyword_group:
-                if keyword.lower() in lowered and keyword not in keywords:
-                    keywords.append(keyword)
-        return keywords[:8]
 
     @staticmethod
     def _recent_question_ids(context: Dict[str, Any]) -> List[str]:
@@ -393,12 +430,46 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
                 deduped.append(question_id)
         return deduped
 
-    def _select_question_from_bank(self, constraints: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _collect_question_candidates(self, constraints: Dict[str, Any]) -> List[Dict[str, Any]]:
+        seen = set()
+        candidates: List[Dict[str, Any]] = []
+
+        def add_many(items: List[Dict[str, Any]]) -> None:
+            for item in items:
+                key = self._candidate_key(item)
+                if key in seen:
+                    continue
+                seen.add(key)
+                candidates.append(item)
+
+        topic = constraints.get("topic")
+        search_topic = topic if topic and topic != "general_programming" else None
+        add_many(
+            self.question_bank_manager.search_questions(
+                "",
+                topic=search_topic,
+                difficulty=constraints.get("difficulty"),
+                limit=20,
+            )
+        )
+        if not candidates:
+            add_many(
+                self.question_bank_manager.search_questions(
+                    "",
+                    topic=search_topic,
+                    difficulty=None,
+                    limit=20,
+                )
+            )
+        return candidates
+
+    async def _select_question_from_bank(self, constraints: Dict[str, Any]) -> Dict[str, Any]:
         candidates = self._collect_question_candidates(constraints)
         ranked: List[tuple] = []
-        for raw_question in candidates:
+        for raw_question in candidates[:8]:
             question = self._to_display_question(raw_question)
-            output_analysis = self._analyze_exercise_match(question, constraints)
+            output_analysis = await self._analyze_exercise_match(question, constraints)
             if output_analysis["valid"]:
                 ranked.append((output_analysis["score"], question, output_analysis))
 
@@ -417,130 +488,108 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
             "output_analysis": output_analysis,
         }
 
-    def _collect_question_candidates(self, constraints: Dict[str, Any]) -> List[Dict[str, Any]]:
-        seen = set()
-        candidates: List[Dict[str, Any]] = []
-
-        def add_many(items: List[Dict[str, Any]]) -> None:
-            for item in items:
-                key = self._candidate_key(item)
-                if key in seen:
-                    continue
-                seen.add(key)
-                candidates.append(item)
-
-        for keyword in constraints.get("keywords", [])[:5]:
-            add_many(self.question_bank_manager.search_questions(keyword=keyword, limit=12))
-
-        topic = constraints.get("topic")
-        add_many(
-            self.question_bank_manager.search_questions(
-                keyword="",
-                topic=topic if topic and topic != "general_programming" else None,
-                difficulty=constraints.get("difficulty"),
-                limit=20,
-            )
-        )
-        if constraints.get("explicit_difficulty"):
-            add_many(
-                self.question_bank_manager.search_questions(
-                    keyword="",
-                    topic=topic if topic and topic != "general_programming" else None,
-                    difficulty=None,
-                    limit=20,
-                )
-            )
-        return candidates
-
     @staticmethod
     def _candidate_key(question: Dict[str, Any]) -> str:
         return str(question.get("question_id") or question.get("id") or question.get("description") or question)
 
-    def _analyze_exercise_match(self, question: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str, Any]:
+    async def _analyze_exercise_match(self, question: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str, Any]:
         normalized = self._to_display_question(question)
-        search_text = self._question_search_text(normalized)
-        score = 0
-        missing: List[str] = []
-        matched_keywords = [
-            keyword
-            for keyword in constraints.get("keywords", [])
-            if keyword.lower() in search_text
-        ]
+        system_prompt = (
+            "You are the exercise agent's output review sub-agent. "
+            "Judge whether the proposed programming exercise satisfies the structured constraints. "
+            "Reason from the full request, task context, question content, topic, difficulty, and profile-derived requirements. "
+            "Return strict JSON only."
+        )
+        user_message = json.dumps(
+            {
+                "constraints": constraints,
+                "question": self._question_prompt_payload(normalized),
+                "question_meta": {
+                    "question_id": normalized.get("question_id"),
+                    "topic": normalized.get("topic"),
+                    "difficulty": normalized.get("difficulty"),
+                    "source": normalized.get("source"),
+                },
+                "output_schema": {
+                    "valid": True,
+                    "score": 0,
+                    "missing": ["what still does not satisfy the request"],
+                    "reason": "short reason",
+                },
+            },
+            ensure_ascii=False,
+        )
+        try:
+            response = await llm_client.generate_response(
+                system_prompt,
+                user_message,
+                use_cache=False,
+                task_type="exercise",
+            )
+            parsed = self._parse_json_response(response)
+            if parsed:
+                score = parsed.get("score", 0)
+                try:
+                    score = int(score)
+                except (TypeError, ValueError):
+                    score = 0
+                missing = parsed.get("missing") or []
+                if not isinstance(missing, list):
+                    missing = [str(missing)]
+                return {
+                    "valid": bool(parsed.get("valid", False)),
+                    "score": score,
+                    "missing": [str(item)[:120] for item in missing if str(item).strip()][:8],
+                    "reason": str(parsed.get("reason") or "llm_output_review")[:120],
+                    "reviewed_by": "llm",
+                }
+        except Exception as exc:
+            logger.warning("Exercise output review failed: %s", exc)
+        return self._structural_exercise_check(normalized, constraints)
 
-        question_id = str(normalized.get("question_id") or "")
+    def _structural_exercise_check(self, question: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str, Any]:
+        missing: List[str] = []
+        score = 0
+        question_id = str(question.get("question_id") or "")
         if question_id and question_id in constraints.get("avoid_question_ids", []):
             missing.append("recently_used_question")
             score -= 10
-
         requested_topic = constraints.get("topic")
         if requested_topic and requested_topic != "general_programming":
-            if normalized.get("topic") == requested_topic:
+            if question.get("topic") == requested_topic:
                 score += 2
             else:
                 missing.append(f"topic:{requested_topic}")
-
         requested_difficulty = constraints.get("difficulty")
-        if constraints.get("explicit_difficulty"):
-            if normalized.get("difficulty") == requested_difficulty:
-                score += 3
+        if requested_difficulty in DIFFICULTY_ORDER:
+            if question.get("difficulty") == requested_difficulty:
+                score += 2
             else:
                 missing.append(f"difficulty:{requested_difficulty}")
-        elif normalized.get("difficulty") == requested_difficulty:
-            score += 1
-
-        if constraints.get("must_match_keywords"):
-            if matched_keywords:
-                score += 5 + min(len(matched_keywords), 3)
-            else:
-                missing.append("requested_keyword_or_subtopic")
-
-        description = self._question_description(normalized).strip()
-        request_texts = {
-            str(constraints.get("raw_request") or "").strip(),
-            str(constraints.get("optimized_input") or "").strip(),
-        }
-        if description and description not in request_texts:
+        description = self._question_description(question).strip()
+        if description:
             score += 1
         else:
-            missing.append("concrete_description")
-        if self._question_answer(normalized):
+            missing.append("description")
+        if self._question_answer(question):
             score += 1
         else:
             missing.append("reference_answer")
-        if normalized.get("content", {}).get("examples"):
+        if (question.get("content", {}) or {}).get("examples"):
             score += 1
         else:
             missing.append("examples")
-        if normalized.get("content", {}).get("hints"):
+        if (question.get("content", {}) or {}).get("hints"):
             score += 1
         else:
             missing.append("hints")
-
-        valid = not missing and score >= (7 if constraints.get("must_match_keywords") else 3)
         return {
-            "valid": valid,
+            "valid": not missing and score >= 4,
             "score": score,
             "missing": missing,
-            "matched_keywords": matched_keywords,
-            "reason": "matched_requirements" if valid else "missing_requirements",
+            "reason": "structural_output_check",
+            "reviewed_by": "structural_fallback",
         }
-
-    def _question_search_text(self, question: Dict[str, Any]) -> str:
-        content = question.get("content", {}) or {}
-        parts = [
-            question.get("question_id", ""),
-            question.get("topic", ""),
-            question.get("difficulty", ""),
-            content.get("title", ""),
-            content.get("description", ""),
-            " ".join(str(item) for item in content.get("requirements", [])),
-            " ".join(str(item) for item in content.get("hints", [])),
-            " ".join(str(item) for item in content.get("examples", [])),
-            self._question_answer(question),
-            " ".join(str(item) for item in question.get("tags", [])),
-            json.dumps(question.get("metadata", {}), ensure_ascii=False),
-        ]
-        return " ".join(parts).lower()
 
     async def _generate_exercise_with_llm(
         self,
@@ -553,33 +602,25 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
         constraints = constraints or {}
         profile_instruction = build_profile_instruction(profile, "exercise")
         system_prompt = (
-            "角色：你是编程教育出题智能体。\n"
-            "任务：生成一道严格符合用户要求的 Python 编程练习题。\n"
-            "输出：只返回 JSON，不要 Markdown，不要解释。\n"
-            "质量要求：题目必须可验证、目标单一、描述清楚；提示应由浅到深；参考答案应能运行。\n"
-            "硬性要求：必须匹配给定主题、子主题、关键词和难度。用户要求简单时不得生成中高级题。\n"
-            "JSON schema：{\n"
-            '  "title": "题目标题",\n'
-            '  "description": "题目描述",\n'
-            '  "requirements": ["明确要求"],\n'
-            '  "examples": [{"input": "函数调用示例", "output": "期望输出"}],\n'
-            '  "hints": ["轻提示", "中提示", "强提示"],\n'
-            '  "answer": "Python参考代码"\n'
-            "}"
-            "\n\n"
-            f"{profile_instruction}\n"
-            "出题时必须把画像落到题面设计里：初学者目标单一、示例更多、提示更细；稳定提升型给适度变式；进阶型可以加入复杂度、边界和工程化要求。"
+            "You are a programming exercise generation agent. "
+            "Generate one Python exercise that satisfies the structured constraints and the user's current request. "
+            "The exercise must be verifiable, focused, clear, and appropriate for the user's profile. "
+            "Return strict JSON only, with fields: title, description, requirements, examples, hints, answer. "
+            f"{profile_instruction}"
         )
-        user_message = f"""主题: {topic or 'general_programming'}
-子主题: {constraints.get('subtopic') or '未指定'}
-难度: {difficulty or 'beginner'}
-必须体现的关键词: {constraints.get('keywords') or []}
-需要避开的题目ID: {constraints.get('avoid_question_ids') or []}
-用户请求: {content}
-用户画像摘要:
-{build_profile_summary(profile)}
-
-请生成练习题 JSON。"""
+        user_message = json.dumps(
+            {
+                "topic": topic or "general_programming",
+                "subtopic": constraints.get("subtopic") or "",
+                "difficulty": difficulty or "beginner",
+                "focus_requirements": constraints.get("focus_requirements") or [],
+                "avoid_question_ids": constraints.get("avoid_question_ids") or [],
+                "validation_feedback": constraints.get("validation_feedback"),
+                "user_request": content,
+                "profile_summary": build_profile_summary(profile),
+            },
+            ensure_ascii=False,
+        )
         response = await llm_client.generate_response(
             system_prompt,
             user_message,
@@ -606,7 +647,7 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
                 },
                 "answer": "",
                 "source": "ai_generated",
-                "tags": constraints.get("keywords", []),
+                "tags": [topic, constraints.get("subtopic"), *constraints.get("focus_requirements", [])],
                 "metadata": {"subtopic": constraints.get("subtopic"), "unparsed": True},
             })
         content_payload = {
@@ -634,103 +675,8 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
             },
             "answer": content_payload["answer"],
             "source": "ai_generated",
-            "tags": [topic, constraints.get("subtopic"), *constraints.get("keywords", [])],
+            "tags": [topic, constraints.get("subtopic"), *constraints.get("focus_requirements", [])],
             "metadata": {"title": content_payload["title"], "adaptive": True, "subtopic": constraints.get("subtopic")},
-        })
-
-    def _build_rule_based_exercise(
-        self,
-        content: str,
-        topic: str,
-        difficulty: str,
-        constraints: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        subtopic = constraints.get("subtopic")
-        if subtopic == "dynamic_programming":
-            payload = {
-                "title": "动态规划入门：爬楼梯",
-                "description": "编写函数 climb_stairs(n)，使用动态规划计算到达第 n 级台阶共有多少种走法。每次可以走 1 级或 2 级台阶，n 为正整数。",
-                "requirements": [
-                    "函数名为 climb_stairs，参数 n 表示台阶数",
-                    "使用动态规划思想，明确状态含义和状态转移",
-                    "返回走到第 n 级台阶的不同方法数",
-                    "按简单入门难度实现，不需要处理复杂输入",
-                ],
-                "examples": [
-                    {"input": "climb_stairs(1)", "output": "1"},
-                    {"input": "climb_stairs(2)", "output": "2"},
-                    {"input": "climb_stairs(5)", "output": "8"},
-                ],
-                "hints": [
-                    "设 dp[i] 表示到达第 i 级台阶的方法数。",
-                    "到达第 i 级可以从 i-1 走一步，也可以从 i-2 走两步。",
-                    "状态转移为 dp[i] = dp[i-1] + dp[i-2]。",
-                ],
-                "answer": (
-                    "def climb_stairs(n):\n"
-                    "    if n <= 2:\n"
-                    "        return n\n"
-                    "    dp = [0] * (n + 1)\n"
-                    "    dp[1], dp[2] = 1, 2\n"
-                    "    for i in range(3, n + 1):\n"
-                    "        dp[i] = dp[i - 1] + dp[i - 2]\n"
-                    "    return dp[n]"
-                ),
-            }
-        elif subtopic == "recursion":
-            payload = {
-                "title": "递归入门：列表求和",
-                "description": "编写函数 recursive_sum(numbers)，使用递归计算列表中所有整数的和。",
-                "requirements": ["必须使用递归", "空列表返回 0", "不得使用 sum()"],
-                "examples": [{"input": "recursive_sum([1, 2, 3])", "output": "6"}],
-                "hints": ["先写空列表的基准情况。", "每次取第一个元素，加上剩余列表的递归结果。"],
-                "answer": (
-                    "def recursive_sum(numbers):\n"
-                    "    if not numbers:\n"
-                    "        return 0\n"
-                    "    return numbers[0] + recursive_sum(numbers[1:])"
-                ),
-            }
-        elif subtopic == "iteration":
-            payload = {
-                "title": "迭代入门：累加偶数",
-                "description": "编写函数 sum_even(numbers)，使用循环计算列表中所有偶数的和。",
-                "requirements": ["必须使用循环", "遇到偶数才累加", "返回整数结果"],
-                "examples": [{"input": "sum_even([1, 2, 3, 4])", "output": "6"}],
-                "hints": ["先准备 total = 0。", "遍历列表，判断数字能否被 2 整除。"],
-                "answer": (
-                    "def sum_even(numbers):\n"
-                    "    total = 0\n"
-                    "    for number in numbers:\n"
-                    "        if number % 2 == 0:\n"
-                    "            total += number\n"
-                    "    return total"
-                ),
-            }
-        else:
-            payload = {
-                "title": "函数练习：计算平方和",
-                "description": "编写函数 square_sum(a, b)，返回两个数字平方后的和。",
-                "requirements": ["定义函数", "使用 return 返回结果", "保持实现简洁"],
-                "examples": [{"input": "square_sum(2, 3)", "output": "13"}],
-                "hints": ["平方可以写成 x * x。", "先分别计算两个平方，再相加。"],
-                "answer": "def square_sum(a, b):\n    return a * a + b * b",
-            }
-        return self._to_display_question({
-            "question_id": f"generated_rule_{subtopic or topic or 'general'}",
-            "topic": topic if topic != "general_programming" else "python_basics",
-            "difficulty": difficulty if difficulty in DIFFICULTY_ORDER else "beginner",
-            "type": "coding",
-            "content": {
-                **payload,
-                "starter_code": "",
-                "expected_function": "",
-                "hidden_tests": [],
-            },
-            "answer": payload["answer"],
-            "source": "rule_based_generated",
-            "tags": [topic, subtopic, *constraints.get("keywords", [])],
-            "metadata": {"subtopic": subtopic, "requested_content": content},
         })
 
     async def _generate_answer_with_llm(self, question_text: str, profile: Optional[Dict[str, Any]] = None) -> str:
@@ -755,138 +701,99 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
             task_type="exercise",
         )
 
-    def _build_answer_style(
+    async def _build_answer_style(
         self,
         content: str,
         context: Dict[str, Any],
         analysis: Dict[str, Any],
+        profile: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         task_context = context.get("task_context", {}) or {}
         original_input = str(task_context.get("original_input") or "").strip()
         optimized_input = str(task_context.get("optimized_input") or "").strip()
-        combined = "\n".join([original_input, content, optimized_input]).lower()
         action = str(task_context.get("action") or "")
-        teaching_mode = str(analysis.get("teaching_mode") or "")
-
-        direct_terms = [
-            "答案",
-            "给答案",
-            "完整答案",
-            "直接给",
-            "参考代码",
-            "完整代码",
-            "最终代码",
-            "solution",
-            "answer",
-            "full code",
-            "final code",
-        ]
-        hint_terms = [
-            "提示",
-            "给点思路",
-            "引导",
-            "不要答案",
-            "别给答案",
-            "先别给代码",
-            "不会",
-            "没思路",
-            "没有思路",
-            "卡住",
-            "做不出来",
-            "写不出来",
-            "hint",
-            "stuck",
-        ]
-        detail_terms = [
-            "详细",
-            "进一步",
-            "展开",
-            "每一步",
-            "一步步",
-            "逐步",
-            "具体",
-            "为什么",
-            "原理",
-            "过程",
-            "再讲",
-            "讲一遍",
-            "看不懂",
-            "多讲",
-            "深入",
-            "执行过程",
-            "detail",
-            "detailed",
-            "more",
-            "step by step",
-            "step-by-step",
-        ]
-        line_terms = ["逐行", "每行", "代码每一步", "每一步的含义", "代码含义", "执行过程", "line by line"]
-        simple_terms = ["简单点", "通俗", "白话", "换种说法", "换个说法", "听不懂", "看不懂", "simpler"]
-        concise_terms = ["简洁", "简单说", "短一点", "只要", "不用太长", "brief", "short"]
-        repeat_terms = ["再", "继续", "进一步", "展开", "讲一遍", "换种", "换个", "again", "continue"]
-
-        wants_direct_answer = any(term in combined for term in direct_terms)
-        wants_detail = any(term in combined for term in detail_terms)
-        wants_line_by_line = any(term in combined for term in line_terms)
-        wants_simple = any(term in combined for term in simple_terms)
-        wants_concise = any(term in combined for term in concise_terms)
-        asks_for_hint = any(term in combined for term in hint_terms)
-        hint_only = (action == "hint_current_exercise" or asks_for_hint) and not (
-            wants_direct_answer or wants_detail or wants_line_by_line
-        )
+        teaching_mode = str(analysis.get("teaching_mode") or "explain")
         already_answered = task_context.get("already_answered", [])
         if not isinstance(already_answered, list):
             already_answered = []
+        profile = profile or context.get("user_profile") or {}
 
-        focus = self._extract_answer_focus(combined)
-        if hint_only:
-            response_kind = "hint"
-        elif wants_line_by_line:
-            response_kind = "code_walkthrough"
-        elif wants_detail:
-            response_kind = "detailed"
-        elif wants_simple:
-            response_kind = "simplified"
-        elif wants_direct_answer:
-            response_kind = "direct_answer"
-        else:
-            response_kind = "guided_answer"
+        system_prompt = (
+            "You are the exercise explanation agent's response-style planner. "
+            "Read the optimized request, task context, routing analysis, and user profile, then decide how the explanation should be written. "
+            "Infer style from the full input and return strict JSON only."
+        )
+        user_message = json.dumps(
+            {
+                "current_input": content,
+                "original_input": original_input,
+                "optimized_input": optimized_input,
+                "task_context": task_context,
+                "routing_analysis": analysis,
+                "profile_summary": build_profile_summary(profile),
+                "allowed_response_kinds": [
+                    "hint",
+                    "guided_answer",
+                    "direct_answer",
+                    "detailed",
+                    "simplified",
+                    "code_walkthrough",
+                ],
+                "output_schema": {
+                    "response_kind": "guided_answer",
+                    "hint_only": False,
+                    "wants_direct_answer": False,
+                    "wants_detail": False,
+                    "wants_line_by_line": False,
+                    "wants_simple": False,
+                    "wants_concise": False,
+                    "avoid_repetition": False,
+                    "focus": ["aspects to emphasize"],
+                    "reason": "short reason",
+                },
+            },
+            ensure_ascii=False,
+        )
+        parsed: Dict[str, Any] = {}
+        try:
+            response = await llm_client.generate_response(
+                system_prompt,
+                user_message,
+                use_cache=False,
+                task_type="exercise",
+            )
+            parsed = self._parse_json_response(response)
+        except Exception as exc:
+            logger.warning("Exercise answer style planning failed: %s", exc)
+
+        allowed_kinds = {"hint", "guided_answer", "direct_answer", "detailed", "simplified", "code_walkthrough"}
+        response_kind = str(parsed.get("response_kind") or "").strip()
+        if response_kind not in allowed_kinds:
+            response_kind = "hint" if action == "hint_current_exercise" or teaching_mode == "hint" else "guided_answer"
+        focus = parsed.get("focus") or []
+        if not isinstance(focus, list):
+            focus = [str(focus)]
+        avoid_repetition = bool(parsed.get("avoid_repetition")) if parsed else bool(already_answered)
+        hint_only = bool(parsed.get("hint_only")) if parsed else response_kind == "hint"
 
         return {
             "response_kind": response_kind,
             "hint_only": hint_only,
-            "wants_direct_answer": wants_direct_answer,
-            "wants_detail": wants_detail,
-            "wants_line_by_line": wants_line_by_line,
-            "wants_simple": wants_simple,
-            "wants_concise": wants_concise,
-            "avoid_repetition": bool(already_answered) and any(term in combined for term in repeat_terms),
-            "focus": focus,
+            "wants_direct_answer": bool(parsed.get("wants_direct_answer", response_kind == "direct_answer")),
+            "wants_detail": bool(parsed.get("wants_detail", response_kind == "detailed")),
+            "wants_line_by_line": bool(parsed.get("wants_line_by_line", response_kind == "code_walkthrough")),
+            "wants_simple": bool(parsed.get("wants_simple", response_kind == "simplified")),
+            "wants_concise": bool(parsed.get("wants_concise", False)),
+            "avoid_repetition": avoid_repetition,
+            "focus": [str(item)[:120] for item in focus if str(item).strip()][:6] or [str(task_context.get("user_requirement") or "current request")],
             "action": action,
             "teaching_mode": teaching_mode or "explain",
             "context_summary": str(task_context.get("context_summary") or "").strip(),
             "already_answered": [str(item) for item in already_answered[:6] if str(item).strip()],
             "original_input": original_input or content,
             "optimized_input": optimized_input or content,
+            "style_reason": str(parsed.get("reason") or "agent_style_planning")[:120],
         }
-
-    @staticmethod
-    def _extract_answer_focus(combined: str) -> List[str]:
-        focus_map = {
-            "解题思路": ["思路", "怎么想", "从哪入手", "分析"],
-            "代码步骤": ["代码", "写法", "实现", "逐行", "每行", "每一步"],
-            "执行过程": ["执行过程", "运行过程", "变量变化", "过程"],
-            "原因解释": ["为什么", "原理", "原因"],
-            "边界条件": ["边界", "特殊情况", "输入输出"],
-            "测试方法": ["测试", "用例", "检查"],
-            "常见错误": ["错误", "坑", "容易错"],
-        }
-        focus = [
-            label
-            for label, terms in focus_map.items()
-            if any(term in combined for term in terms)
-        ]
-        return focus or ["解题思路", "代码步骤"]
 
     async def _format_contextual_answer(
         self,
@@ -965,18 +872,7 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
 
     @staticmethod
     def _is_usable_llm_answer(response: str) -> bool:
-        if not response or len(response.strip()) < 30:
-            return False
-        fallback_markers = [
-            "目前无法调用大模型",
-            "基础模式",
-            "按系统内置逻辑",
-            "我先按基础模式",
-        ]
-        if any(marker in response for marker in fallback_markers):
-            return False
-        old_template = "参考解答\n\n建议先自己尝试 5 到 10 分钟"
-        return old_template not in response
+        return bool(response and len(response.strip()) >= 30)
 
     def _format_contextual_answer_fallback(
         self,
@@ -1221,11 +1117,7 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
 
     @staticmethod
     def _extract_question_from_request(content: str) -> str:
-        answer_phrases = ["这道题的答案", "这个题目的解答", "请解答", "求答案", "帮我解答", "怎么做"]
-        result = content
-        for phrase in answer_phrases:
-            result = result.replace(phrase, "")
-        return result.strip() or content
+        return content.strip() or content
 
     @staticmethod
     def _choose_topic_from_profile(profile: Dict[str, Any]) -> str:
@@ -1258,110 +1150,3 @@ class EnhancedExerciseGenerationAgent(BaseAgent):
     def _next_difficulty(difficulty: str) -> str:
         index = DIFFICULTY_ORDER.index(difficulty) if difficulty in DIFFICULTY_ORDER else 0
         return DIFFICULTY_ORDER[min(index + 1, len(DIFFICULTY_ORDER) - 1)]
-
-    @staticmethod
-    def _infer_topic(content: str) -> Optional[str]:
-        mappings = {
-            "python_basics": ["python", "函数", "变量", "循环", "条件", "print", "def"],
-            "data_structures": ["列表", "字典", "集合", "元组", "list", "dict", "set", "tuple"],
-            "algorithms": ["算法", "排序", "查找", "递归", "sort", "search"],
-            "oop": ["类", "对象", "继承", "封装", "class", "object"],
-        }
-        lowered = content.lower()
-        for topic, keywords in mappings.items():
-            if any(keyword.lower() in lowered for keyword in keywords):
-                return topic
-        return None
-
-    @staticmethod
-    def _infer_difficulty(content: str) -> Optional[str]:
-        lowered = content.lower()
-        if any(word in lowered for word in ["简单", "入门", "beginner", "基础"]):
-            return "beginner"
-        if any(word in lowered for word in ["高级", "困难", "advanced", "挑战"]):
-            return "advanced"
-        if any(word in lowered for word in ["中等", "intermediate", "进阶"]):
-            return "intermediate"
-        return None
-
-    @staticmethod
-    def _is_answer_request(content: str) -> bool:
-        content_lower = content.lower()
-        answer_keywords = [
-            "答案",
-            "给答案",
-            "解答",
-            "讲解",
-            "怎么做",
-            "咋做",
-            "如何做",
-            "如何实现",
-            "怎么写",
-            "写法",
-            "参考代码",
-            "不会",
-            "不会做",
-            "不会写",
-            "不懂",
-            "看不懂",
-            "没思路",
-            "没有思路",
-            "卡住",
-            "卡住了",
-            "做不出来",
-            "写不出来",
-            "不知道怎么写",
-            "不知道怎么做",
-            "solution",
-            "answer",
-            "hint",
-        ]
-        generation_keywords = ["生成", "出题", "练习", "题目", "quiz", "test", "exam"]
-        return any(keyword in content_lower for keyword in answer_keywords) and not any(
-            keyword in content_lower for keyword in generation_keywords
-        )
-
-    @staticmethod
-    def _is_vague_answer_followup(content: str) -> bool:
-        content_lower = content.lower().strip()
-        reference_terms = [
-            "这个",
-            "这题",
-            "这道题",
-            "该题",
-            "它",
-            "上一题",
-            "上一次",
-            "刚才",
-            "刚刚",
-            "那个",
-        ]
-        action_terms = [
-            "答案",
-            "解答",
-            "怎么做",
-            "咋做",
-            "如何做",
-            "如何实现",
-            "怎么写",
-            "写法",
-            "参考代码",
-            "讲解",
-            "提示",
-            "不会",
-            "不会做",
-            "不会写",
-            "不懂",
-            "看不懂",
-            "没思路",
-            "没有思路",
-            "卡住",
-            "卡住了",
-            "做不出来",
-            "写不出来",
-            "不知道怎么写",
-            "不知道怎么做",
-        ]
-        has_action = any(term in content_lower for term in action_terms)
-        has_reference = any(term in content_lower for term in reference_terms)
-        return has_action and (has_reference or len(content_lower) <= 12)

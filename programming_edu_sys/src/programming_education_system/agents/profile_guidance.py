@@ -6,26 +6,21 @@ from typing import Any, Dict, List
 
 
 def infer_user_type(user_profile: Dict[str, Any]) -> str:
-    """Infer a teaching persona from profile fields and behavior metrics."""
+    """Infer a teaching persona from normalized profile fields and behavior metrics."""
     behavior = _behavior_metrics(user_profile)
     total_submissions = _safe_int(behavior.get("total_submission_count"))
     first_pass_rate = _safe_float(behavior.get("first_pass_rate"), 0.5)
     answer_view_count = _safe_int(behavior.get("answer_view_count"))
     hint_view_count = _safe_int(behavior.get("hint_view_count"))
     weak_topics = user_profile.get("weak_topics") or []
-    level = str(user_profile.get("programming_level") or "").lower()
+    level = str(user_profile.get("programming_level") or "").strip().lower()
 
-    if (
-        "advanced" in level
-        or "熟练" in level
-        or (total_submissions >= 5 and first_pass_rate >= 0.8 and not weak_topics)
-    ):
+    if level in {"beginner", "intermediate", "advanced"}:
+        return level
+    if total_submissions >= 5 and first_pass_rate >= 0.8 and not weak_topics:
         return "advanced"
     if (
-        "beginner" in level
-        or "初学" in level
-        or "基础" in level
-        or first_pass_rate < 0.45
+        first_pass_rate < 0.45
         or answer_view_count >= 3
         or hint_view_count >= 5
         or len(weak_topics) >= 2

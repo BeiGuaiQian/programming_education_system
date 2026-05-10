@@ -174,17 +174,6 @@ class AnswerEvaluationAgent(BaseAgent):
         if request_text:
             question_info["description"] = request_text[:300]
 
-        topic_keywords = {
-            "python_basics": ["def ", "print(", "input(", "for ", "while "],
-            "data_structures": ["list", "dict", "set", "tuple", "[", "{"],
-            "algorithms": ["sort", "search", "recursive", "algorithm", "binary_search"],
-            "oop": ["class ", "self.", "__init__"],
-        }
-        lowered_code = code.lower()
-        for topic, keywords in topic_keywords.items():
-            if any(keyword.lower() in lowered_code for keyword in keywords):
-                question_info["topic"] = topic
-                break
         return code, question_info
 
     def _syntax_check(self, code: str) -> Dict[str, Any]:

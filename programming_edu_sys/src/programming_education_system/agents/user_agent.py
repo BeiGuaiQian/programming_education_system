@@ -199,7 +199,8 @@ class EnhancedUserAgent(BaseAgent):
             return False
         if len(enhanced) > 600:
             return False
-        if any(token in enhanced for token in ["```", "{", "}", "答案是"]):
+        stripped = enhanced.strip()
+        if "```" in enhanced or stripped.startswith("{") or stripped.endswith("}"):
             return False
         return True
 
@@ -623,8 +624,7 @@ class EnhancedUserAgent(BaseAgent):
             return False
         if len(optimized) > 1200:
             return False
-        forbidden = ["答案是", "参考代码如下", "```"]
-        if any(token in optimized for token in forbidden):
+        if "```" in optimized:
             return False
         if len(original_input.strip()) > 20 and len(optimized.strip()) < max(8, len(original_input.strip()) // 2):
             return False
@@ -639,158 +639,6 @@ class EnhancedUserAgent(BaseAgent):
         if request_type != "auto" and len(content.strip()) > 12:
             return False
         return len(content.strip()) <= 120
-
-    @staticmethod
-    def _is_exercise_followup(content: str) -> bool:
-        lowered = content.lower().strip()
-        if not lowered:
-            return False
-        answer_terms = [
-            "答案",
-            "给答案",
-            "解答",
-            "怎么做",
-            "咋做",
-            "如何做",
-            "如何实现",
-            "怎么写",
-            "写法",
-            "代码",
-            "思路",
-            "提示",
-            "讲解",
-            "不会",
-            "参考代码",
-            "参考答案",
-            "solution",
-            "answer",
-            "hint",
-        ]
-        reference_terms = [
-            "这题",
-            "这道题",
-            "这个题",
-            "这个",
-            "这道",
-            "它",
-            "该题",
-            "上一题",
-            "上一次",
-            "上一个",
-            "上面",
-            "前面",
-            "刚才",
-            "刚刚",
-            "你刚才",
-            "刚出的",
-            "你生成的题",
-            "生成的题目",
-            "那道题",
-            "那个",
-            "那个练习",
-            "这个练习",
-        ]
-        new_question_terms = [
-            "再来一道",
-            "再出一道",
-            "换一道",
-            "重新出",
-            "出一道题",
-            "生成一道",
-            "给我一道",
-            "再生成",
-        ]
-        has_answer_action = any(term in lowered for term in answer_terms)
-        has_reference = any(term in lowered for term in reference_terms)
-        asks_new_question = any(term in lowered for term in new_question_terms)
-        if asks_new_question and not has_answer_action:
-            return False
-        return has_reference and has_answer_action
-
-    @staticmethod
-    def _is_exercise_help_request(content: str) -> bool:
-        lowered = content.lower().strip()
-        if not lowered:
-            return False
-        help_terms = [
-            "不会",
-            "不会做",
-            "不会写",
-            "不懂",
-            "看不懂",
-            "没思路",
-            "没有思路",
-            "卡住",
-            "卡住了",
-            "做不出来",
-            "写不出来",
-            "不知道怎么写",
-            "不知道怎么做",
-            "help",
-            "stuck",
-        ]
-        new_question_terms = [
-            "再来一道",
-            "再出一道",
-            "再练一题",
-            "换一道",
-            "重新出",
-            "重新生成",
-            "出一道题",
-            "生成一道",
-            "给我一道",
-            "再生成",
-        ]
-        return any(term in lowered for term in help_terms) and not any(
-            term in lowered for term in new_question_terms
-        )
-
-    @staticmethod
-    def _is_new_exercise_request(content: str) -> bool:
-        lowered = content.lower().strip()
-        if not lowered:
-            return False
-        new_question_terms = [
-            "再来一道",
-            "再出一道",
-            "再练一题",
-            "换一道",
-            "重新出",
-            "重新生成",
-            "出一道题",
-            "生成一道",
-            "给我一道",
-            "再生成",
-            "类似的",
-            "同类型",
-            "another",
-            "new exercise",
-            "new problem",
-        ]
-        answer_terms = [
-            "答案",
-            "给答案",
-            "解答",
-            "怎么做",
-            "咋做",
-            "如何做",
-            "如何实现",
-            "怎么写",
-            "写法",
-            "代码",
-            "思路",
-            "提示",
-            "讲解",
-            "不会",
-            "参考代码",
-            "参考答案",
-            "solution",
-            "answer",
-            "hint",
-        ]
-        return any(term in lowered for term in new_question_terms) and not any(
-            term in lowered for term in answer_terms
-        )
 
     @staticmethod
     def _last_question_from_context(

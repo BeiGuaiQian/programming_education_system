@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from datetime import datetime
 from typing import Any, Dict, List
@@ -68,7 +69,7 @@ class UserCognitionUpdateAgent:
         if "learning_goals" in profile_data:
             profile.learning_goals = [str(goal) for goal in profile_data.get("learning_goals", []) if str(goal).strip()]
 
-        topic = profile_data.get("topic") or self._infer_topic(profile_data.get("content", ""))
+        topic = profile_data.get("topic") or "python_basics"
         is_correct = self._infer_correctness(profile_data)
         if topic:
             profile.update_mastery(topic, is_correct, str(profile_data.get("difficulty", "beginner")))
@@ -270,31 +271,7 @@ class UserCognitionUpdateAgent:
         evaluation_score = profile_data.get("evaluation_score")
         if isinstance(evaluation_score, (int, float)):
             return evaluation_score >= 70
-        content = str(profile_data.get("content", "")).lower()
-        return not any(token in content for token in ["error", "bug", "wrong", "失败", "错误"])
-
-    def _infer_topic(self, content: str) -> str:
-        lowered = str(content).lower()
-        mapping = {
-            "list": "data_structures",
-            "dict": "data_structures",
-            "列表": "data_structures",
-            "字典": "data_structures",
-            "class": "oop",
-            "object": "oop",
-            "类": "oop",
-            "sort": "algorithms",
-            "递归": "algorithms",
-            "算法": "algorithms",
-            "函数": "python_basics",
-            "loop": "python_basics",
-            "循环": "python_basics",
-            "async": "advanced_python",
-        }
-        for keyword, topic in mapping.items():
-            if keyword in lowered:
-                return topic
-        return "python_basics"
+        return True
 
 
 class PersonalizedSuggestionAgent:
@@ -429,10 +406,48 @@ class PersonalizedLearningAgent(BaseAgent):
         intent_counter = Counter(item.get("intent", "unknown") for item in behaviors)
         return {"profile": profile, "recent_behavior_count": len(behaviors), "common_intents": intent_counter.most_common(3)}
 
+    async def _decide_personal_action(
+        self,
+        content: str,
+        request: Dict[str, Any],
+        user_profile: Dict[str, Any],
+    ) -> str:
+        context = request.get("context", {}) or {}
+        task_context = context.get("task_context") or {}
+        system_prompt = (
+            "You are the personalized learning agent's request planner. "
+            "Choose which personal-learning output should be produced from the optimized user input, task context, and profile. "
+            "Infer from the full request and return strict JSON only."
+        )
+        user_message = json.dumps(
+            {
+                "content": content,
+                "task_context": task_context,
+                "intent_analysis": request.get("intent_analysis", {}),
+                "profile_summary": build_profile_summary(user_profile),
+                "allowed_actions": ["learning_path", "profile_summary", "suggestions"],
+                "output_schema": {"action": "suggestions", "reason": "short reason"},
+            },
+            ensure_ascii=False,
+        )
+        try:
+            response = await llm_client.generate_response(
+                system_prompt,
+                user_message,
+                use_cache=False,
+                task_type="personal",
+            )
+            data = json.loads(response.strip())
+            action = str(data.get("action") or "suggestions")
+            if action in {"learning_path", "profile_summary", "suggestions"}:
+                return action
+        except Exception:
+            pass
+        return "suggestions"
+
     async def process(self, request: Dict[str, Any]) -> Dict[str, Any]:
         user_id = request["user_id"]
         content = str(request.get("content", ""))
-        lowered = content.lower()
         user_profile = await self.get_user_profile(user_id)
         self.log_activity("processing personalized request", {"user_id": user_id})
         log_agent_interaction(
@@ -449,7 +464,8 @@ class PersonalizedLearningAgent(BaseAgent):
             },
         )
 
-        if any(keyword in lowered for keyword in ["path", "路线", "路径", "计划"]):
+        personal_action = await self._decide_personal_action(content, request, user_profile)
+        if personal_action == "learning_path":
             learning_path = await self.path_agent.generate_learning_path(user_profile)
             path_text = "\n".join(f"{index + 1}. {item}" for index, item in enumerate(learning_path["path"]))
             response_data = {
@@ -467,7 +483,7 @@ class PersonalizedLearningAgent(BaseAgent):
             )
             return response_data
 
-        if any(keyword in lowered for keyword in ["profile", "画像"]):
+        if personal_action == "profile_summary":
             response_data = {
                 "success": True,
                 "response": (

@@ -5,11 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from programming_education_system.agents.profile_guidance import (
+    build_profile_instruction,
+    build_profile_summary,
+    infer_user_type,
+)
 from programming_education_system.agents.base_agent import BaseAgent
 from programming_education_system.cognition_judger.cognitive_api_scientific import (
     get_scientific_cognitive_api_sync,
 )
 from programming_education_system.models.knowledge_base import KnowledgeBase
+from programming_education_system.utils.agent_interaction_logger import log_agent_interaction
 from programming_education_system.utils.llm_utils import llm_client
 
 logger = logging.getLogger(__name__)
@@ -25,21 +31,29 @@ class ThinkingQAAgent:
     async def think_and_answer(
         self, complex_question: str, user_id: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        context = context or {}
+        user_profile = context.get("user_profile") or {}
         cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
         learning_params = await self.cognition_api.get_personalized_learning_parameters(
             user_id, "explanation"
         )
-        teaching_mode = (context or {}).get("intent_analysis", {}).get("teaching_mode", "explain")
-        system_prompt = self._build_system_prompt(cognitive_state, learning_params, teaching_mode)
-        retrieval_context = (context or {}).get("retrieval_context", {})
-        retrieval_text = (context or {}).get("retrieval_text", "")
-        task_context = (context or {}).get("task_context") or {}
+        teaching_mode = context.get("intent_analysis", {}).get("teaching_mode", "explain")
+        system_prompt = self._build_system_prompt(
+            cognitive_state,
+            learning_params,
+            teaching_mode,
+            user_profile=user_profile,
+        )
+        retrieval_context = context.get("retrieval_context", {})
+        retrieval_text = context.get("retrieval_text", "")
+        task_context = context.get("task_context") or {}
         user_requirement = str(task_context.get("user_requirement") or "").strip()
         context_summary = str(task_context.get("context_summary") or "").strip()
         already_answered = self._format_list(task_context.get("already_answered") or [])
         avoid_repeating = self._format_list(task_context.get("avoid_repeating") or [])
         user_message = (
             f"学生问题: {complex_question}\n\n"
+            f"用户画像摘要:\n{build_profile_summary(user_profile) if user_profile else '无'}\n\n"
             f"用户本轮要求:\n{user_requirement or '无'}\n\n"
             f"用户代理提供的必要上下文:\n{context_summary or '无'}\n\n"
             f"历史中已经讲过的要点:\n{already_answered or '无'}\n\n"
@@ -62,7 +76,11 @@ class ThinkingQAAgent:
         )
         answer_source = "llm_thinking"
         if self._is_llm_unavailable_answer(answer):
-            answer = self._build_retrieval_fallback_answer(complex_question, retrieval_context)
+            answer = self._build_retrieval_fallback_answer(
+                complex_question,
+                retrieval_context,
+                user_profile=user_profile,
+            )
             answer_source = "qa_retrieval_fallback"
         return {
             "answer": answer,
@@ -71,6 +89,8 @@ class ThinkingQAAgent:
             "learning_parameters": learning_params,
             "personalization_applied": True,
             "retrieval_context": retrieval_context,
+            "user_type": infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state),
+            "profile_summary": build_profile_summary(user_profile) if user_profile else "",
         }
 
     def _build_system_prompt(
@@ -78,9 +98,12 @@ class ThinkingQAAgent:
         cognitive_state: Dict[str, Any],
         learning_params: Dict[str, Any],
         teaching_mode: str = "explain",
+        user_profile: Optional[Dict[str, Any]] = None,
     ) -> str:
         level = cognitive_state["overall_cognitive_level"]
         depth = learning_params.get("parameters", {}).get("explanation_depth", 0.7)
+        user_profile = user_profile or {}
+        user_type = infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state)
         mode_instruction = {
             "hint": "优先给提示和引导问题，不要一开始就给完整答案。",
             "quiz": "解释后给一个 1 分钟小测题来检查理解。",
@@ -93,19 +116,29 @@ class ThinkingQAAgent:
             "如果检索资料和问题不匹配，要降低资料权重，避免答非所问。"
             "不要因为上下文里出现了某个知识点，就偏离当前问题。"
         )
-        if level < 0.4:
+        profile_instruction = build_profile_instruction(user_profile, "qa") if user_profile else ""
+        profile_summary = build_profile_summary(user_profile) if user_profile else ""
+        profile_block = (
+            f"{profile_instruction}\n用户画像摘要:\n{profile_summary}\n"
+            if user_profile
+            else ""
+        )
+        if user_type == "beginner":
             return (
                 "你是耐心的编程入门助教。使用简单中文、短步骤和一个具体例子。"
                 f"解释深度约 {depth:.1f}。{mode_instruction}{base_instruction}"
+                f"{profile_block}"
             )
-        if level < 0.7:
+        if user_type == "intermediate":
             return (
                 "你是实践型编程助教。兼顾概念、例子和常见误区。"
                 f"解释深度约 {depth:.1f}。{mode_instruction}{base_instruction}"
+                f"{profile_block}"
             )
         return (
             "你是进阶编程导师。包含更深层推理、取舍和最佳实践。"
             f"解释深度约 {depth:.1f}。{mode_instruction}{base_instruction}"
+            f"{profile_block}"
         )
 
     @staticmethod
@@ -132,20 +165,44 @@ class ThinkingQAAgent:
         return "目前无法调用大模型" in str(answer or "")
 
     @staticmethod
-    def _build_retrieval_fallback_answer(question: str, retrieval_context: Dict[str, Any]) -> str:
+    def _user_type_from_cognition(cognitive_state: Dict[str, Any]) -> str:
+        level = float(cognitive_state.get("overall_cognitive_level", 0.5) or 0.5)
+        if level < 0.4:
+            return "beginner"
+        if level < 0.7:
+            return "intermediate"
+        return "advanced"
+
+    @staticmethod
+    def _build_retrieval_fallback_answer(
+        question: str,
+        retrieval_context: Dict[str, Any],
+        user_profile: Optional[Dict[str, Any]] = None,
+    ) -> str:
         hits = retrieval_context.get("hits") or []
+        user_type = infer_user_type(user_profile or {}) if user_profile else "intermediate"
         if hits:
             first = hits[0]
             title = str(first.get("title") or "相关资料")
             text = " ".join(str(first.get("text") or "").split())
             if len(text) > 420:
                 text = text[:419].rstrip() + "…"
+            if user_type == "advanced":
+                extra = (
+                    "\n\n进阶关注点：可以进一步追问它的边界条件、抽象方式、"
+                    "复杂度取舍或工程中的使用场景。"
+                )
+            elif user_type == "beginner":
+                extra = "\n\n下一步：先用自己的话复述这个概念，再写一个 3 行以内的小例子。"
+            else:
+                extra = "\n\n下一步：可以用一个小例子验证这个概念是否真正理解。"
             return (
                 "大模型暂时不可用，我先根据课程资料给你一个简要说明。\n\n"
                 f"当前问题：{question}\n\n"
                 f"可参考资料：{title}\n\n"
                 f"核心内容：{text}\n\n"
                 "如果需要更细的步骤，可以稍后再让我继续展开。"
+                f"{extra}"
             )
         return (
             "大模型暂时不可用，而且当前问题没有匹配到足够明确的课程资料。\n"
@@ -187,17 +244,23 @@ class KnowledgeBaseRetrievalAgent:
         question: str,
         user_id: str,
         topic: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        topic = topic or self._infer_topic_from_question(question)
+        topic = topic or "general_programming"
         results = self.knowledge_base.search(question, topic=None if topic == "general_programming" else topic)
         if not results:
             return {"found": False, "answer": ""}
 
         best_match = results[0]
-        if best_match.get("score", 0) < 4.0 or not self._is_directly_relevant(question, best_match):
+        if best_match.get("score", 0) < 4.0:
             return {"found": False, "answer": "", "retrieval_context": self.knowledge_base.build_context(question)}
         cognitive_state = await self.cognition_api.get_cognitive_state(user_id)
-        personalized_answer = await self._personalize_knowledge_answer(best_match, cognitive_state)
+        personalized_answer = await self._personalize_knowledge_answer(
+            best_match,
+            cognitive_state,
+            user_profile=user_profile,
+        )
+        user_type = infer_user_type(user_profile or {}) if user_profile else self._user_type_from_cognition(cognitive_state)
         return {
             "found": True,
             "answer": personalized_answer,
@@ -205,6 +268,8 @@ class KnowledgeBaseRetrievalAgent:
             "source": "knowledge_base",
             "confidence": "high",
             "personalized": True,
+            "user_type": user_type,
+            "profile_summary": build_profile_summary(user_profile or {}) if user_profile else "",
             "retrieval_context": self.knowledge_base.build_context(question, limit=3),
             "citations": [
                 self._citation_from_result(item)
@@ -213,67 +278,40 @@ class KnowledgeBaseRetrievalAgent:
         }
 
     async def _personalize_knowledge_answer(
-        self, knowledge_item: Dict[str, Any], cognitive_state: Dict[str, Any]
+        self,
+        knowledge_item: Dict[str, Any],
+        cognitive_state: Dict[str, Any],
+        user_profile: Optional[Dict[str, Any]] = None,
     ) -> str:
         base_answer = str(knowledge_item.get("answer", ""))
-        level = cognitive_state.get("overall_cognitive_level", 0.5)
+        user_profile = user_profile or {}
+        user_type = infer_user_type(user_profile) if user_profile else self._user_type_from_cognition(cognitive_state)
+        if user_type == "beginner":
+            return (
+                "先抓住核心想法："
+                f"{base_answer}\n\n"
+                "你可以先把它写成一句自己的话，再看一个最小例子。"
+            )
+        if user_type == "advanced":
+            return (
+                "先给结论："
+                f"{base_answer}\n\n"
+                "进阶看法：重点关注它的抽象边界、输入输出约定、副作用控制，以及在工程里如何复用。"
+            )
+        return (
+            "给你一个实用解释："
+            f"{base_answer}\n\n"
+            "建议顺手写一个小例子，把概念和代码对应起来。"
+        )
+
+    @staticmethod
+    def _user_type_from_cognition(cognitive_state: Dict[str, Any]) -> str:
+        level = float(cognitive_state.get("overall_cognitive_level", 0.5) or 0.5)
         if level < 0.4:
-            prefix = "先抓住核心想法："
-        elif level < 0.7:
-            prefix = "给你一个实用解释："
-        else:
-            prefix = "先给结论，再补充深层要点："
-        return prefix + base_answer
-
-    @staticmethod
-    def _infer_topic_from_question(question: str) -> str:
-        lowered = question.lower()
-        mapping = {
-            "data_structures": ["列表", "字典", "集合", "元组", "list", "dict", "stack", "栈", "append"],
-            "algorithms": ["算法", "排序", "查找", "递归", "binary", "二分"],
-            "oop": ["类", "对象", "继承", "class"],
-            "python_basics": ["python", "函数", "变量", "循环", "条件", "def"],
-        }
-        for topic, keywords in mapping.items():
-            if any(keyword in lowered for keyword in keywords):
-                return topic
-        return "general_programming"
-
-    @staticmethod
-    def _is_directly_relevant(question: str, item: Dict[str, Any]) -> bool:
-        lowered_question = question.lower()
-        searchable = " ".join(
-            [
-                str(item.get("title", "")),
-                str(item.get("question", "")),
-                str(item.get("answer", "")),
-                str(item.get("text", "")),
-                " ".join(str(example) for example in item.get("examples", [])),
-            ]
-        ).lower()
-        required_terms = [
-            "append",
-            "列表",
-            "list",
-            "字典",
-            "dict",
-            "元组",
-            "tuple",
-            "集合",
-            "set",
-            "函数",
-            "def",
-            "return",
-            "递归",
-            "二分",
-            "排序",
-            "类",
-            "对象",
-        ]
-        asked_terms = [term for term in required_terms if term in lowered_question]
-        if not asked_terms:
-            return True
-        return all(term in searchable for term in asked_terms)
+            return "beginner"
+        if level < 0.7:
+            return "intermediate"
+        return "advanced"
 
     @staticmethod
     def _citation_from_result(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -305,6 +343,11 @@ class QAAgent(BaseAgent):
     ) -> Dict[str, Any]:
         self.log_activity("answering question", {"user_id": user_id})
         context = context or {}
+        user_profile = context.get("user_profile") or await self._load_user_profile(user_id)
+        context["user_profile"] = user_profile
+        context["profile_instruction"] = build_profile_instruction(user_profile, "qa")
+        context["profile_summary"] = build_profile_summary(user_profile)
+        user_type = infer_user_type(user_profile)
         intent_analysis = context.get("intent_analysis") or {}
         task_context = context.get("task_context") or {}
         topic = str(
@@ -312,27 +355,6 @@ class QAAgent(BaseAgent):
             or task_context.get("topic_hint")
             or "general_programming"
         )
-        allow_direct_kb = not any(
-            [
-                task_context.get("context_summary"),
-                task_context.get("already_answered"),
-                task_context.get("avoid_repeating"),
-                task_context.get("user_requirement"),
-                task_context.get("action") not in {None, "", "plain"},
-            ]
-        )
-        kb_result = await self.kb_agent.retrieve_from_knowledge_base(question, user_id, topic=topic)
-        if allow_direct_kb and kb_result.get("found") and kb_result.get("confidence") == "high":
-            return {
-                "response": kb_result["answer"],
-                "examples": kb_result.get("examples", []),
-                "source": kb_result.get("source", "knowledge_base"),
-                "needs_thinking": False,
-                "personalized": kb_result.get("personalized", False),
-                "retrieval_context": kb_result.get("retrieval_context", {}),
-                "citations": kb_result.get("citations", []),
-            }
-
         retrieval_context = self.kb_agent.knowledge_base.build_context(question, topic=topic, limit=3)
         if not retrieval_context.get("hits") and topic != "general_programming":
             retrieval_context = self.kb_agent.knowledge_base.build_context(question, topic=None, limit=3)
@@ -367,40 +389,16 @@ class QAAgent(BaseAgent):
             "learning_parameters": thinking_result.get("learning_parameters", {}),
             "retrieval_context": retrieval_context,
             "citations": citations,
+            "user_type": thinking_result.get("user_type", user_type),
+            "profile_summary": thinking_result.get("profile_summary", context["profile_summary"]),
         }
 
-    @staticmethod
-    def _is_follow_up_question(question: str, context: Dict[str, Any]) -> bool:
-        if not context.get("recent_history"):
-            return False
-        stripped = question.strip()
-        lowered = stripped.lower()
-        follow_up_markers = [
-            "再",
-            "继续",
-            "换个",
-            "举例",
-            "例子",
-            "为什么",
-            "那",
-            "它",
-            "这个",
-            "刚才",
-            "上一",
-            "详细",
-            "展开",
-            "不懂",
-            "什么意思",
-            "what about",
-            "why",
-            "example",
-            "more",
-        ]
-        if any(marker in lowered for marker in follow_up_markers):
-            return True
-        return len(stripped) <= 18 and not any(
-            token in lowered for token in ["python", "函数", "列表", "字典", "算法", "class", "def"]
-        )
+    async def _load_user_profile(self, user_id: str) -> Dict[str, Any]:
+        try:
+            return await self.personal_agent.get_user_profile(user_id)
+        except Exception as exc:
+            logger.warning("Loading user profile for QA failed: %s", exc)
+            return {}
 
     @staticmethod
     def _topic_from_context(context: Dict[str, Any]) -> Optional[str]:
@@ -421,6 +419,23 @@ class QAAgent(BaseAgent):
         question = request["content"]
         user_id = request["user_id"]
         context = {**request.get("context", {}), "intent_analysis": request.get("intent_analysis", {})}
+        user_profile = context.get("user_profile") or await self._load_user_profile(user_id)
+        context["user_profile"] = user_profile
+        log_agent_interaction(
+            "sub_agent_received",
+            "MainAgent",
+            self.name,
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload={
+                "question": question,
+                "intent_analysis": request.get("intent_analysis", {}),
+                "task_context": context.get("task_context"),
+                "recent_history_count": len(context.get("recent_history", [])),
+                "user_type": infer_user_type(user_profile),
+                "profile_summary": build_profile_summary(user_profile),
+            },
+        )
         result = await self.answer_question(question, user_id, context)
         task_context = context.get("task_context") or {}
         topic = str(
@@ -438,6 +453,7 @@ class QAAgent(BaseAgent):
                 "content": question[:100],
                 "cognitive_level": result.get("cognitive_level_used", 0.5),
                 "personalization_applied": result.get("personalized", False),
+                "user_type": result.get("user_type") or infer_user_type(user_profile),
             }
         )
 
@@ -451,6 +467,8 @@ class QAAgent(BaseAgent):
                 "topic": topic,
                 "answer_type": "detailed" if result["needs_thinking"] else "quick",
                 "personalized": result.get("personalized", False),
+                "user_type": result.get("user_type") or infer_user_type(user_profile),
+                "profile_summary": result.get("profile_summary") or build_profile_summary(user_profile),
                 "cognitive_insights": cognitive_insights,
                 "retrieval_context": result.get("retrieval_context", {}),
                 "citations": result.get("citations", []),
@@ -460,6 +478,14 @@ class QAAgent(BaseAgent):
             response_data["details"]["learning_tips"] = await self._generate_scientific_learning_tips(
                 user_id, topic
             )
+        log_agent_interaction(
+            "sub_agent_completed",
+            self.name,
+            "MainAgent",
+            request_id=str(request.get("request_id", "")),
+            user_id=user_id,
+            payload=response_data,
+        )
         return response_data
 
     async def _get_scientific_cognitive_insights(self, user_id: str, topic: str) -> Dict[str, Any]:
@@ -519,18 +545,3 @@ class QAAgent(BaseAgent):
         domain_score = knowledge_domains.get(domain, 0.5)
         understanding_score = cognitive_state.get("cognitive_dimensions", {}).get("understand", 0.5)
         return (domain_score + understanding_score) / 2
-
-    def _extract_topic(self, question: str) -> str:
-        lowered = question.lower()
-        topic_keywords = {
-            "data_structures": ["list", "dict", "tuple", "set", "列表", "字典", "append"],
-            "algorithms": ["algorithm", "sort", "search", "递归", "算法"],
-            "oop": ["class", "object", "inherit", "继承", "面向对象"],
-            "web_development": ["flask", "django", "html", "css", "javascript", "前端"],
-            "data_science": ["pandas", "numpy", "机器学习", "数据分析"],
-            "python_basics": ["python", "def", "function", "变量", "函数", "语法"],
-        }
-        for topic, keywords in topic_keywords.items():
-            if any(keyword in lowered for keyword in keywords):
-                return topic
-        return "general_programming"
